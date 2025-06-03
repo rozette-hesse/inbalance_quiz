@@ -11,7 +11,7 @@ qr_code = Image.open("qr_code.png")
 st.image(logo,  width=250)
 
 # --- Header ---
-st.markdown("<h1 style='text-align: center; color: teal;'>Let’s Understand Your Hormonal Health, Together 💫"</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: teal;'>Let’s Understand Your Hormonal Health, Together 💫</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>Answer a few quick questions to check for signs of PCOS, hormonal imbalance, or insulin resistance.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
