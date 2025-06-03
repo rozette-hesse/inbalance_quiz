@@ -2,10 +2,33 @@ import streamlit as st
 
 st.set_page_config(page_title="InBalance Hormonal Quiz", layout="centered")
 
-st.title("🩺 Is Your Hormonal Health in Balance?")
-st.markdown("Answer a few quick questions to discover your hormonal profile.")
+# --- STYLES ---
+st.markdown("""
+    <style>
+        h1, h2, h3, .stTextInput label, .stRadio label {
+            color: #D12C66;
+            font-family: 'Helvetica', sans-serif;
+        }
+        .stButton>button {
+            background-color: #D12C66;
+            color: white;
+            font-weight: bold;
+            border-radius: 6px;
+            padding: 0.5em 1em;
+        }
+        .stButton>button:hover {
+            background-color: #b41f53;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# Collect user answers
+# --- HEADER ---
+st.image("https://i.imgur.com/rGcyEhR.png", width=100)  # Replace with your logo if needed
+st.markdown("<h1 style='text-align: center;'>InBalance Hormonal Health Quiz</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Your hormones. Your symptoms. Your cycle — in sync.</p>", unsafe_allow_html=True)
+st.markdown("---")
+
+# --- QUIZ QUESTIONS ---
 cycle = st.radio("1. How regular was your menstrual cycle in the past year?", [
     "Does not apply (on hormonal treatment or pregnant)",
     "Regular (25–35 days)",
@@ -36,8 +59,9 @@ fatigue = st.radio("5. Do you feel tired or sleepy after meals?", [
     "Often regardless of food",
     "Almost daily"])
 
+# --- SUBMIT BUTTON ---
 if st.button("🔍 Show My Result"):
-    # Scoring logic
+    # Scoring dictionaries
     cycle_scores = {
         "Does not apply (on hormonal treatment or pregnant)": 0,
         "Regular (25–35 days)": 1,
@@ -54,29 +78,33 @@ if st.button("🔍 Show My Result"):
     HYPRA = hair_scores[hair] * 4 + acne_scores[acne] * 3
     PCOMIR = weight_scores[weight] * 2 + fatigue_scores[fatigue]
 
-    # Determine diagnosis
+    # Diagnosis logic
     if CA >= 20 and HYPRA >= 20 and PCOMIR >= 10:
         result = "🌀 PCOS-like Pattern"
-        message = "Your answers point to a hormonal pattern often linked to PCOS, including irregular cycles, androgen symptoms, and metabolic imbalance."
+        message = "Your answers suggest a hormonal pattern often seen in PCOS: irregular cycles, androgen symptoms, and metabolic imbalance."
     elif CA >= 20 and HYPRA >= 20:
         result = "⚠️ Hyperandrogenism + Irregular Cycles"
-        message = "You may be dealing with excess androgens and ovulatory dysfunction — patterns often missed in basic checkups."
+        message = "You may be dealing with excess androgens and ovulatory disruption — signs often missed in basic checkups."
     elif HYPRA >= 20 and PCOMIR >= 10:
         result = "⚖️ Hormonal + Metabolic Imbalance"
-        message = "Your profile shows possible androgen excess and insulin resistance — this may appear as acne, cravings, or stubborn weight."
+        message = "This profile may reflect elevated androgens with insulin resistance — common in acne, cravings, and stubborn weight."
     elif PCOMIR >= 10:
-        result = "🔻 Insulin Resistance / Metabolic Disruption"
-        message = "You’re showing signs of metabolic disruption, which often affects hormones too. Early support can make a big difference."
+        result = "🔻 Metabolic Imbalance / Insulin Resistance"
+        message = "You show signs of metabolic disruption, which may be influencing your hormones and energy."
     elif CA >= 20:
         result = "🔄 Irregular Cycles / Anovulation"
-        message = "Your cycle history suggests ovulatory disruption — one of the earliest signs of hormonal imbalance."
+        message = "Your cycle pattern suggests ovulatory irregularity — a key early sign of hormonal imbalance."
     else:
-        result = "✅ No Strong Signs of Hormonal Imbalance"
-        message = "No major signs right now, but continue tracking your symptoms. Hormones shift with age, stress, and lifestyle."
+        result = "✅ No Strong Indicators of Hormonal Imbalance"
+        message = "Your responses don’t point to significant hormonal issues right now, but continue to track for changes."
 
     # Display result
-    st.subheader(result)
+    st.markdown(f"<h2 style='color:#D12C66'>{result}</h2>", unsafe_allow_html=True)
     st.success(message)
-    st.markdown("💡 *Want to go further? Join the InBalance waitlist for expert support and smarter tracking.*")
-    st.markdown("[📲 Tap here to join the waitlist](https://yourlinktree.com)")
 
+    st.markdown("---")
+    st.markdown("💡 Want smarter tracking + expert support? Join the InBalance waitlist below!")
+    st.markdown("[📲 Tap here to join the waitlist](https://linktr.ee/Inbalance.ai)")
+
+    # QR code
+    st.image("https://i.imgur.com/61X1h0K.png", width=150, caption="Scan to Join the Waitlist")  # Use your QR image URL here
