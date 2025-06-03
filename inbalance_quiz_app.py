@@ -1,83 +1,56 @@
+
+from oauth2client.service_account import ServiceAccountCredentials
 import streamlit as st
 from PIL import Image
 import re
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
 from google.oauth2.service_account import Credentials
 
-
-# Streamlit page setup
-st.set_page_config(page_title="InBalance Hormonal Quiz", layout="centered")
-
-
-# --------- Initialize session state keys ----------
-if "q_index" not in st.session_state:
-    st.session_state.q_index = 0
-if "answers" not in st.session_state:
-    st.session_state.answers = []
-if "completed" not in st.session_state:
-    st.session_state.completed = False
-if "name" not in st.session_state:
-    st.session_state.name = ""
-if "email" not in st.session_state:
-    st.session_state.email = ""
-
-
-# Load logo and QR code
+# App Setup
+st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
 logo = Image.open("logo.png")
-qr_code = Image.open("qr_code.png")
+st.image(logo, width=120)
 
-# Display logo
-st.image(logo, width=180)
+# Session State
+if "q_index" not in st.session_state: st.session_state.q_index = 0
+if "answers" not in st.session_state: st.session_state.answers = []
+if "completed" not in st.session_state: st.session_state.completed = False
+if "name" not in st.session_state: st.session_state.name = ""
+if "email" not in st.session_state: st.session_state.email = ""
+if "waitlist_opt_in" not in st.session_state: st.session_state.waitlist_opt_in = None
+if "extra_questions_done" not in st.session_state: st.session_state.extra_questions_done = False
 
-st.markdown("<h1 style='text-align: center; color: teal;'>How Balanced Are Your Hormones?</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>A 1-minute quiz to help you understand your hormonal health — and how InBalance can help.</p>", unsafe_allow_html=True)
-
-
-# Google Sheets connection
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-import json
-from google.oauth2.service_account import Credentials
-
-credentials_dict = st.secrets["gcp_service_account"]
-credentials = Credentials.from_service_account_info(credentials_dict, scopes=scope)
-
-client = gspread.authorize(credentials)
-sheet = client.open("InBalance_Quiz_Responses").sheet1
+# Google Sheets Auth
+try:
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    credentials_dict = st.secrets["gcp_service_account"]
+    credentials = Credentials.from_service_account_info(credentials_dict, scopes=scope)
+    client = gspread.authorize(credentials)
+    sheet = client.open("InBalance_Quiz_Responses").sheet1
+except Exception as e:
+    sheet = None
 
 
 
-# ---------------------- QUIZ FLOW ----------------------
-if st.session_state.q_index < len(questions):
-    question = questions[st.session_state.q_index]
+if st.session_state.q_index == 0 and not st.session_state.completed:
+    st.title("How Balanced Are Your Hormones?")
+    st.subheader("A 1-minute quiz to help you understand your hormonal health — and how InBalance can help.")
+    
+    st.session_state.name = st.text_input("👤 First Name:")
+    st.session_state.email = st.text_input("📧 Email Address:")
 
-    st.markdown(f"<h4 style='font-size: 22px; font-weight: bold;'>{question['q']}</h4>", unsafe_allow_html=True)
+    def is_valid_email(email):
+        return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
-    option = st.radio(" ", [opt[0] for opt in question["options"]], key=f"radio_{st.session_state.q_index}")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("⬅️ Back", key=f"back_{st.session_state.q_index}"):
-            if st.session_state.q_index > 0:
-                st.session_state.q_index -= 1
-                if st.session_state.answers:
-                    st.session_state.answers.pop()
-                st.rerun()
-
-    with col2:
-        if st.button("➡️ Next", key=f"next_{st.session_state.q_index}"):
-            if option:  # make sure something is selected
-                selected_score = [opt[1] for opt in question["options"] if opt[0] == option][0]
-                if len(st.session_state.answers) <= st.session_state.q_index:
-                    st.session_state.answers.append(selected_score)
-                else:
-                    st.session_state.answers[st.session_state.q_index] = selected_score
-
-                st.session_state.q_index += 1
-                st.rerun()
-
+    if st.button("Start Quiz"):
+        if not st.session_state.name.strip():
+            st.warning("Please enter your name to continue.")
+        elif not is_valid_email(st.session_state.email):
+            st.warning("Please enter a valid email address.")
+        else:
+            st.session_state.q_index = 1
+            st.rerun()
+    st.stop()
 
 
 
@@ -104,119 +77,98 @@ questions = [
         "q": "Have you had acne or oily skin this year?",
         "options": [
             ("No", 1),
-            ("Yes, but controlled", 4),
+            ("Yes, mild but manageable", 4),
             ("Yes, often despite treatment", 6),
             ("Yes, severe and persistent", 8),
         ]
     },
     {
-        "q": "Have you experienced weight changes this year?",
+        "q": "Have you experienced weight changes?",
         "options": [
-            ("No, stable", 1),
-            ("Stable with effort", 2),
-            ("Struggling without lifestyle change", 5),
-            ("Struggling despite healthy lifestyle", 7),
+            ("No, stable weight", 1),
+            ("Stable only with effort", 2),
+            ("Struggling to maintain weight", 5),
+            ("Can't lose weight despite diet/exercise", 7),
         ]
     },
     {
-        "q": "Do you feel very tired or sleepy after meals?",
+        "q": "Do you feel tired or sleepy after meals?",
         "options": [
-            ("No", 1),
-            ("Sometimes after heavy/sugary meals", 2),
-            ("Often, regardless of meal type", 4),
-            ("Almost daily — hard to stay alert", 6),
+            ("No, not really", 1),
+            ("Sometimes after heavy meals", 2),
+            ("Yes, often regardless of food", 4),
+            ("Yes, almost daily with alertness issues", 6),
         ]
-    }
+    },
 ]
 
-if 1 <= st.session_state.step <= len(questions):
-    idx = st.session_state.step - 1
-    st.markdown(f"### {questions[idx]['q']}")
-    choice = st.radio("", [opt[0] for opt in questions[idx]["options"]])
-    if st.button("Next"):
-        value = next(score for text, score in questions[idx]["options"] if text == choice)
-        st.session_state.answers.append(value)
-        st.session_state.step += 1
-        st.rerun()
+index = st.session_state.q_index
+if index < len(questions):
+    q = questions[index]
+    st.markdown(f"### {q['q']}")
+    selected_option = st.radio(" ", [opt[0] for opt in q["options"]], key=f"q{index}")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("⬅️ Back", key=f"back_{index}"):
+            if st.session_state.q_index > 1:
+                st.session_state.q_index -= 1
+                st.session_state.answers.pop()
+                st.rerun()
+    with col2:
+        if st.button("➡️ Next", key=f"next_{index}"):
+            score = [opt[1] for opt in q["options"] if opt[0] == selected_option][0]
+            st.session_state.answers.append(score)
+            st.session_state.q_index += 1
+            if st.session_state.q_index >= len(questions):
+                st.session_state.completed = True
+            st.rerun()
 
 
-if st.session_state.step > len(questions):
-    scores = st.session_state.answers
-    total = sum(scores)
 
-    # Clustering
-    CA = scores[0] * 4
-    HYPRA = scores[1] * 4 + scores[2] * 3
-    PCOMIR = scores[3] * 2 + scores[4] * 1
+if st.session_state.completed:
+    total = sum(st.session_state.answers)
 
-    if CA >= 20 and HYPRA >= 20 and PCOMIR >= 10:
-        diagnosis = "Phenotype A – Full PCOS Pattern"
-        message = "Your symptoms suggest significant cycle irregularity, androgen-related signs like hair or skin changes, and possible insulin resistance."
-    elif CA >= 20 and HYPRA >= 20:
-        diagnosis = "Phenotype B – Androgenic + Irregular Cycles"
-        message = "You may have hormonal imbalances affecting ovulation and male hormone levels. Worth investigating further."
-    elif HYPRA >= 20 and PCOMIR >= 10:
-        diagnosis = "Phenotype C – Metabolic & Androgenic Signs"
-        message = "This pattern may indicate hormonal excess + signs of insulin resistance (acne, fatigue, weight gain)."
-    elif CA >= 20 and PCOMIR >= 10:
-        diagnosis = "Phenotype D – Ovulatory + Metabolic Issues"
-        message = "You may have cycle disruption alongside symptoms of insulin resistance like fatigue or cravings."
+    if total < 8:
+        diagnosis = "No strong hormonal patterns detected"
+        rec = "Your cycle and symptoms seem generally balanced. Keep observing changes month-to-month."
+    elif total < 16:
+        diagnosis = "Ovulatory Imbalance"
+        rec = "You may have subtle hormonal fluctuations. These may cause fatigue, breakouts, or missed ovulation."
+    elif total < 24:
+        diagnosis = "HCA-PCO (Possible PCOS)"
+        rec = "Several symptoms point to a mild PCOS pattern. Consider confirming this with a clinician."
     else:
-        diagnosis = "Balanced Hormonal Profile"
-        message = "No strong hormonal imbalance is showing — but tracking your health is still essential."
+        diagnosis = "H-PCO (Androgenic + Metabolic Signs)"
+        rec = "You show signs of both hormone and metabolic imbalance. A tailored approach is recommended."
 
-    st.success("✅ Quiz Complete!")
-    st.markdown(f"<h3 style='color: teal;'>🧬 Result: {diagnosis}</h3>", unsafe_allow_html=True)
-    st.markdown(f"<p>{message}</p>", unsafe_allow_html=True)
+    st.success("✅ Quiz complete!")
+    st.markdown(f"### 🧬 Result: {diagnosis}")
+    st.write(rec)
 
-    st.markdown("### 💡 How InBalance Can Help")
-    st.markdown(f"""
-    InBalance helps you track symptoms, cycles, cravings, fatigue, and skin/hair changes — and our team of doctors uses that data to guide your care.
+    st.markdown("#### 💡 How InBalance Can Help")
+    st.info("InBalance helps you track symptoms, cycles, fatigue, skin changes, and more — and our experts use that data to guide your care.")
 
-    Whether you want a diagnosis, treatment, or a better understanding of your body, we’re here for you. Join our waitlist and be the first to try it.
-    """)
+    qr = Image.open("qr_code.png")
+    st.image(qr, width=180)
 
-    st.image(qr_code, width=180)
+    st.markdown("### 💬 Want to join the InBalance app waitlist?")
+    st.session_state.waitlist_opt_in = st.radio("Would you like to join?", ["Yes", "No"])
 
-# Waitlist CTA
-st.markdown("## 💬 Want to join the InBalance app waitlist?")
-join = st.radio("Would you like to join?", ["Yes", "No"])
+    if st.session_state.waitlist_opt_in == "Yes" and not st.session_state.extra_questions_done:
+        tracking = st.radio("Do you currently track your cycle or symptoms?", ["Yes, with an app", "Yes, manually", "No, but I want to", "No, and I don’t know where to start", "Other"])
+        symptoms = st.multiselect("What symptoms do you deal with most often?", ["Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"])
+        goal = st.radio("What is your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Personalized lifestyle plan", "Just curious", "Other"])
+        notes = st.text_area("Anything else you'd like us to know?")
 
-if join == "Yes":
-    st.markdown("### 📋 Tell us more")
+        if st.button("Finish & Save"):
+            try:
+                if sheet:
+                    row = [st.session_state.name, st.session_state.email, diagnosis, total, tracking, ", ".join(symptoms), goal, notes]
+                    sheet.append_row(row)
+                    st.success("✅ You're on the waitlist! We'll be in touch.")
+                    st.session_state.extra_questions_done = True
+            except:
+                st.error("Could not save your data. Please check Google Sheet setup.")
 
-    track = st.radio("Do you currently track your cycle or symptoms?", [
-        "Yes, with an app",
-        "Yes, manually",
-        "No, but I want to",
-        "No, and I don’t know where to start",
-        "Other"
-    ])
-
-    symptoms = st.multiselect("What symptoms do you deal with most often?", [
-        "Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne",
-        "Anxiety", "Sleep issues", "Brain fog", "Other"
-    ])
-
-    goal = st.radio("What is your main health goal right now?", [
-        "I want to understand my cycle better",
-        "I want to reduce symptoms like fatigue, acne, or cravings",
-        "Looking for diagnosis or answers",
-        "I want a personalized lifestyle plan",
-        "Just curious",
-        "Other"
-    ])
-
-    notes = st.text_area("Anything you'd like us to know?")
-
-    # Save these values or append them to the sheet
-    st.success("🎉 You're on the waitlist! We'll be in touch.")
-
-
-    # Save to Google Sheets
-    submission = [datetime.now().isoformat(), st.session_state.name, st.session_state.email, diagnosis, *scores]
-    sheet.append_row(submission)
-
-    if st.button("Restart"):
-        st.session_state.clear()
-        st.rerun()
+    st.button("Restart Quiz", on_click=lambda: st.session_state.clear())
