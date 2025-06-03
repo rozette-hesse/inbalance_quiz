@@ -156,4 +156,4 @@ else:
     if st.button("Start Over"):
         st.session_state.q = 0
         st.session_state.answers = []
-        st.experimental_rerun()
+        st.rerun()
