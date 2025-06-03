@@ -1,22 +1,21 @@
 import streamlit as st
 from PIL import Image
 
-# Page setup
+# --- CONFIG ---
 st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
 
-# Load images
+# --- Load images ---
 logo = Image.open("logo.png")
 qr_code = Image.open("qr_code.png")
 
-# Centered logo
 st.image(logo, use_column_width=True)
 
-# Title
+# --- Header ---
 st.markdown("<h1 style='text-align: center; color: teal;'>InBalance Hormonal Health Quiz</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>Take a 1-minute check for <strong>hormonal imbalance, PCOS</strong>, or <strong>insulin resistance</strong>.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Quiz questions
+# --- Questions ---
 questions = [
     {
         "question": "How regular was your menstrual cycle in the past year?",
@@ -65,83 +64,76 @@ questions = [
     }
 ]
 
-# Score weight per question
 weights = [4, 3, 2.5, 2, 1]
 
-# Store answers
+# --- Session states ---
 if "q_index" not in st.session_state:
     st.session_state.q_index = 0
     st.session_state.total_score = 0
-    st.session_state.selected_answers = []
+    st.session_state.answers = []
 
-# Display questions one by one
+# --- Quiz Loop ---
 if st.session_state.q_index < len(questions):
     q = questions[st.session_state.q_index]
-    st.markdown(f"<h3 style='color: black; font-size: 24px; font-weight: bold;'>{q['question']}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='font-size: 22px; font-weight: bold;'>{q['question']}</h3>", unsafe_allow_html=True)
     selected = st.radio(" ", [opt[0] for opt in q["options"]], index=None)
 
     if st.button("Next") and selected:
-        points = dict(q["options"])[selected]
-        st.session_state.total_score += points * weights[st.session_state.q_index]
-        st.session_state.selected_answers.append(selected)
+        score = dict(q["options"])[selected]
+        st.session_state.total_score += score * weights[st.session_state.q_index]
+        st.session_state.answers.append(selected)
+        st.session_state.q_index += 1
         st.rerun()
 
+# --- Results ---
 else:
-    score = st.session_state.total_score
+    total = st.session_state.total_score
+    answers = st.session_state.answers
 
-    # Determine diagnosis
-    if score < 25:
+    if total < 25:
         diagnosis = "No strong hormonal patterns detected"
-        detail = "Your symptoms don’t show strong signs of PCOS or major hormonal dysfunction. That’s great — but keep monitoring your cycle."
-    elif 25 <= score < 35:
+        detail = "Your symptoms don’t show strong signs of PCOS or major hormonal dysfunction. Keep tracking your cycle and symptoms."
+    elif total < 35:
         diagnosis = "Possible Ovulatory Imbalance"
-        detail = "You may have signs of irregular ovulation, which can impact fertility or cycle regularity. Consider further hormonal testing."
-    elif 35 <= score < 45:
+        detail = "Your answers suggest possible ovulatory dysfunction. Cycle tracking and hormonal testing could clarify things."
+    elif total < 45:
         diagnosis = "Possible Metabolic-Hormonal Imbalance"
-        detail = "You may have signs of both insulin resistance and hormonal dysregulation. A full checkup is recommended."
-    elif 45 <= score < 55:
+        detail = "You may be experiencing hormonal + metabolic symptoms. Consider lifestyle and lab testing."
+    elif total < 55:
         diagnosis = "H-PCO (Androgenic PCOS)"
-        detail = "Symptoms suggest elevated male hormones like testosterone — often linked to acne, hair growth, and cycle issues."
+        detail = "This pattern reflects possible elevated male hormones like testosterone — watch for acne, hair changes, and cycle issues."
     else:
         diagnosis = "HCA-PCO (Classic PCOS)"
-        detail = "Your symptoms are strongly suggestive of PCOS — including hormonal, cycle, and metabolic issues. A medical consult is highly recommended."
+        detail = "Your results strongly match classic PCOS symptoms — a medical consult is recommended."
 
-    # Header
+    # --- Result display ---
     st.success("✅ All done! Analyzing your answers…")
-    st.markdown(f"<h3 style='color: teal; margin-top: 20px;'>🧬 Result: {diagnosis}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: teal;'>🧬 Result: {diagnosis}</h3>", unsafe_allow_html=True)
     st.write(f"**{detail}**")
 
-    # Recommendations (based on selected options only — NOT showing answers)
+    # --- Recommendations (based on selected options only) ---
     recs = []
-    ans = st.session_state.selected_answers
 
-    if "I rarely got my period" in ans[0] or "Often irregular" in ans[0]:
-        recs.append("Cycle irregularity may signal ovulatory issues. Tracking ovulation patterns could be helpful.")
+    if "irregular" in answers[0] or "rarely" in answers[0]:
+        recs.append("You may benefit from tracking ovulation and cycle length regularly.")
+    if "hair thinning" in answers[1] or "major issue" in answers[1]:
+        recs.append("Hair growth changes may signal high androgens — consider lab testing.")
+    if "resistant" in answers[2] or "often" in answers[2]:
+        recs.append("Persistent acne/oily skin may reflect inflammation or testosterone excess.")
+    if "struggling" in answers[3]:
+        recs.append("Difficulty losing weight despite effort may signal insulin resistance.")
+    if "daily" in answers[4] or "sleepy" in answers[4]:
+        recs.append("Post-meal fatigue can point to blood sugar imbalances.")
 
-    if "hair thinning" in ans[1] or "major issue" in ans[1]:
-        recs.append("Excessive hair growth + thinning may reflect high androgen levels (testosterone). Consider testing.")
-
-    if "persistent" in ans[2] or "resistant" in ans[2]:
-        recs.append("Persistent acne may signal inflammation or excess androgens.")
-
-    if "struggling" in ans[3] or "lose weight despite" in ans[3]:
-        recs.append("Weight struggles despite effort may suggest insulin resistance.")
-
-    if "daily" in ans[4] or "often" in ans[4]:
-        recs.append("Fatigue after meals may reflect unstable blood sugar or early insulin resistance.")
-
+    # --- Display InBalance section ---
     if recs:
-        st.markdown("### 🧠 How InBalance Can Help")
-        with st.container():
-            st.info(
-                "InBalance helps you track symptoms, spot patterns, and make sense of skin, cycle, or energy changes — so you can take informed steps.\n\n" +
-                "\n".join([f"- {r}" for r in recs])
-            )
+        st.markdown("### 💡 How InBalance Can Help")
+        st.info("InBalance helps you track symptoms, cycles, and lifestyle — and supports you with insights.\n\n" +
+                "\n".join([f"- {r}" for r in recs]))
 
-    # QR code & restart
-    st.image(qr_code, caption="Scan to learn more", width=300)
+    # --- QR + Reset ---
+    st.image(qr_code, width=180)
     if st.button("🔁 Start Over"):
-        st.session_state.q_index = 0
-        st.session_state.total_score = 0
-        st.session_state.selected_answers = []
+        for key in ["q_index", "total_score", "answers"]:
+            del st.session_state[key]
         st.rerun()
