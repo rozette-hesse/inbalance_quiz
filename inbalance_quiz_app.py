@@ -12,8 +12,8 @@ if api_key:
     openai.api_key = api_key
 
 # Load logo and QR code
-logo = Image.open("Logo-X-2024-01.png")
-qr_code = Image.open("Grey White Simple Light Real Estate QR Code.png")
+logo = Image.open("logo.png")
+qr_code = Image.open("qr_code.png")
 
 # --- UI Styling ---
 st.image(logo, width=100)
