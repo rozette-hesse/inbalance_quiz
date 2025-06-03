@@ -32,24 +32,35 @@ sheet = client.open("InBalance_Quiz_Responses").sheet1
 
 
 
-if "step" not in st.session_state:
-    st.session_state.step = 0
-if "answers" not in st.session_state:
-    st.session_state.answers = []
+# ---------------------- QUIZ FLOW ----------------------
+if st.session_state.q_index < len(questions):
+    question = questions[st.session_state.q_index]
 
-if st.session_state.step == 0:
-    name = st.text_input("👤 First Name:")
-    email = st.text_input("📧 Email Address:")
-    def is_valid_email(email):
-        return re.match(r"[^@]+@[^@]+\.[^@]+", email)
-    if st.button("Start Quiz"):
-        if not name or not is_valid_email(email):
-            st.warning("Please enter a valid name and email to continue.")
-        else:
-            st.session_state.name = name
-            st.session_state.email = email
-            st.session_state.step = 1
-            st.rerun()
+    st.markdown(f"<h4 style='font-size: 22px; font-weight: bold;'>{question['q']}</h4>", unsafe_allow_html=True)
+
+    option = st.radio(" ", [opt[0] for opt in question["options"]], key=f"radio_{st.session_state.q_index}")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("⬅️ Back", key=f"back_{st.session_state.q_index}"):
+            if st.session_state.q_index > 0:
+                st.session_state.q_index -= 1
+                if st.session_state.answers:
+                    st.session_state.answers.pop()
+                st.rerun()
+
+    with col2:
+        if st.button("➡️ Next", key=f"next_{st.session_state.q_index}"):
+            if option:  # make sure something is selected
+                selected_score = [opt[1] for opt in question["options"] if opt[0] == option][0]
+                if len(st.session_state.answers) <= st.session_state.q_index:
+                    st.session_state.answers.append(selected_score)
+                else:
+                    st.session_state.answers[st.session_state.q_index] = selected_score
+
+                st.session_state.q_index += 1
+                st.rerun()
 
 
 
@@ -150,6 +161,41 @@ if st.session_state.step > len(questions):
     """)
 
     st.image(qr_code, width=180)
+
+# Waitlist CTA
+st.markdown("## 💬 Want to join the InBalance app waitlist?")
+join = st.radio("Would you like to join?", ["Yes", "No"])
+
+if join == "Yes":
+    st.markdown("### 📋 Tell us more")
+
+    track = st.radio("Do you currently track your cycle or symptoms?", [
+        "Yes, with an app",
+        "Yes, manually",
+        "No, but I want to",
+        "No, and I don’t know where to start",
+        "Other"
+    ])
+
+    symptoms = st.multiselect("What symptoms do you deal with most often?", [
+        "Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne",
+        "Anxiety", "Sleep issues", "Brain fog", "Other"
+    ])
+
+    goal = st.radio("What is your main health goal right now?", [
+        "I want to understand my cycle better",
+        "I want to reduce symptoms like fatigue, acne, or cravings",
+        "Looking for diagnosis or answers",
+        "I want a personalized lifestyle plan",
+        "Just curious",
+        "Other"
+    ])
+
+    notes = st.text_area("Anything you'd like us to know?")
+
+    # Save these values or append them to the sheet
+    st.success("🎉 You're on the waitlist! We'll be in touch.")
+
 
     # Save to Google Sheets
     submission = [datetime.now().isoformat(), st.session_state.name, st.session_state.email, diagnosis, *scores]
