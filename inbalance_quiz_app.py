@@ -108,7 +108,7 @@ index = st.session_state.q_index
 if 1 <= index <= len(questions):
     q = questions[index - 1]
     st.markdown(f"<h4><b>{q['question']}</b></h4>", unsafe_allow_html=True)
-    answer = st.radio(" ", [opt[0] for opt in q["options"]], key=index)
+    answer = st.radio(" ", [opt[0] for opt in q["options"]], index=None)
 
     col1, col2 = st.columns([1, 1])
     with col1:
