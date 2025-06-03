@@ -1,42 +1,45 @@
 import streamlit as st
 from PIL import Image
+import re
 
 # ----------------------- CONFIG -----------------------
 st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
 
-# ---------------------- LOGO & HEADER ----------------------
+# ----------------------- STATE INIT -----------------------
+if "q_index" not in st.session_state:
+    st.session_state.q_index = 0
+if "answers" not in st.session_state:
+    st.session_state.answers = []
+if "completed" not in st.session_state:
+    st.session_state.completed = False
+
+# ----------------------- LOGO & HEADER -----------------------
 logo = Image.open("logo.png")
-st.image(logo, width=150)
+st.image(logo, width=120)
 
-st.markdown(
-    "<h1 style='text-align: center; color: teal;'>Check Your Hormonal Balance</h1>",
-    unsafe_allow_html=True,
-)
-st.markdown(
-    "<p style='text-align: center;'>A 1-minute quiz to understand if your symptoms might suggest PCOS, insulin resistance, or hormonal imbalance.</p>",
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<h1 style='text-align: center; color: teal;'>Check Your Hormonal Balance</h1>
+<p style='text-align: center;'>A 1-minute quiz to understand if your symptoms might suggest PCOS, insulin resistance, or hormonal imbalance.</p>
+""", unsafe_allow_html=True)
 
-import re
+# ----------------------- EMAIL VALIDATION -----------------------
+def is_valid_email(email):
+    return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
-# ---------------------- NAME + EMAIL ----------------------
+# ----------------------- USER INFO -----------------------
 if "name" not in st.session_state:
     st.session_state.name = ""
 if "email" not in st.session_state:
     st.session_state.email = ""
 
 if st.session_state.q_index == 0 and not st.session_state.completed:
-    st.markdown("### 👋 Let's start by getting to know you a little")
-    st.session_state.name = st.text_input("What's your first name?")
-    st.session_state.email = st.text_input("Enter your email address")
-
-    # Email validation using regex
-    def is_valid_email(email):
-        return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+    st.markdown("### 👋 Let's start by getting to know you")
+    st.session_state.name = st.text_input("Your first name")
+    st.session_state.email = st.text_input("Your email address")
 
     if st.button("Start Quiz"):
         if not st.session_state.name.strip():
-            st.warning("Please enter your name to continue.")
+            st.warning("Please enter your name.")
         elif not is_valid_email(st.session_state.email):
             st.warning("Please enter a valid email address.")
         else:
@@ -44,7 +47,7 @@ if st.session_state.q_index == 0 and not st.session_state.completed:
             st.rerun()
     st.stop()
 
-# ---------------------- QUIZ QUESTIONS ----------------------
+# ----------------------- QUESTIONS -----------------------
 questions = [
     {
         "question": "How regular was your menstrual cycle in the past year?",
@@ -59,97 +62,96 @@ questions = [
         "question": "Do you notice excessive thick black hair growth on your face, chest, or back?",
         "options": [
             ("No, not at all.", 1),
-            ("Yes, it’s a noticeable issue that is well-controlled with hair removal techniques.", 5),
-            ("Yes, it’s a major issue that is resistant to hair removal techniques.", 7),
-            ("Yes, excessive hair growth is an issue alongside hair thinning or hair-loss on the scalp", 8),
+            ("Yes, well-controlled with hair removal.", 5),
+            ("Yes, and resistant to hair removal.", 7),
+            ("Yes, with scalp hair thinning too.", 8),
         ],
     },
     {
         "question": "Have you had issues with acne or oily skin in the past year?",
         "options": [
-            ("No, I'm not facing any skin troubles", 1),
-            ("Yes, but well controlled with skin treatments", 4),
-            ("Yes, often despite regular skin treatments", 6),
-            ("Yes, severe and resistant to skin treatments", 8),
+            ("No skin issues", 1),
+            ("Yes, but controlled", 4),
+            ("Yes, often and hard to manage", 6),
+            ("Yes, severe and persistent", 8),
         ],
     },
     {
         "question": "Have you experienced weight changes in the past year?",
         "options": [
-            ("No, my weight is generally stable.", 1),
-            ("No, my weight is more or less stable as long as I work out and eat mindfully.", 2),
-            ("Yes, I’m struggling to control my weight without significant changes in diet and/or exercise.", 5),
-            ("Yes, I’m struggling to lose weight despite diets and/or regular workouts.", 7),
+            ("Weight stable", 1),
+            ("Stable with effort", 2),
+            ("Struggling to control weight", 5),
+            ("Gaining despite workouts", 7),
         ],
     },
     {
         "question": "Do you feel excessively tired or sleepy after meals?",
         "options": [
-            ("No, not really.", 1),
-            ("Sometimes after heavy or sugary meals.", 2),
-            ("Yes, often regardless of what I eat.", 4),
-            ("Yes, almost daily with trouble staying alert and awake after meals.", 6),
+            ("No", 1),
+            ("Sometimes after sugar", 2),
+            ("Yes, often", 4),
+            ("Yes, daily fatigue after meals", 6),
         ],
     },
 ]
 
-# ---------------------- QUIZ FLOW ----------------------
+# ----------------------- QUIZ FLOW -----------------------
 index = st.session_state.q_index
 
-if index < len(questions):
-    question = questions[index]
-    st.markdown(f"<h4><b>{question['question']}</b></h4>", unsafe_allow_html=True)
-
-    option = st.radio(" ", [opt[0] for opt in question["options"]], key=index)
+if index <= len(questions) - 1:
+    q = questions[index]
+    st.markdown(f"<h4 style='font-weight: bold;'>{q['question']}</h4>", unsafe_allow_html=True)
+    selected = st.radio(" ", [opt[0] for opt in q["options"]], key=index)
 
     if st.button("Next"):
-        selected_score = [opt[1] for opt in question["options"] if opt[0] == option][0]
-        st.session_state.answers.append(selected_score)
+        score = next(val for txt, val in q["options"] if txt == selected)
+        st.session_state.answers.append(score)
         st.session_state.q_index += 1
-
-        if st.session_state.q_index >= len(questions):
-            st.session_state.completed = True
         st.rerun()
 
+elif index == len(questions):
+    st.markdown("**Would you like to join our app waitlist for expert hormonal tracking?**")
+    join = st.radio(" ", ["Yes", "No"], key="waitlist")
 
-# ---------------------- RESULTS ----------------------
-if st.session_state.get("completed"):
-    total_score = sum(st.session_state.answers)
+    if st.button("Finish"):
+        st.session_state.completed = True
+        st.session_state.join_waitlist = join
+        st.rerun()
 
-    # DIAGNOSIS CLUSTERING
-    if total_score < 8:
-        diagnosis = "No strong hormonal patterns detected"
-        explanation = "Your symptoms don’t currently show strong signs of PCOS or major hormonal dysfunction. That’s great — but it’s still important to keep tracking your cycle regularly."
-    elif total_score < 16:
-        diagnosis = "Ovulatory Imbalance"
-        explanation = "You may have signs of hormonal fluctuations that could affect ovulation. These can show up as acne, irregular cycles, or fatigue."
-    elif total_score < 24:
-        diagnosis = "HCA-PCO (Possible PCOS)"
-        explanation = "Some of your symptoms align with common PCOS features — such as cycle irregularity, skin or hair changes, or weight gain."
+# ----------------------- RESULTS -----------------------
+if st.session_state.completed:
+    score = sum(st.session_state.answers)
+
+    if score < 8:
+        diag = "No strong hormonal patterns detected"
+        detail = "You don’t currently show strong signs of hormonal dysfunction — but it’s smart to keep monitoring changes."
+    elif score < 16:
+        diag = "Ovulatory Imbalance"
+        detail = "You may have mild cycle or ovulation issues like fatigue, acne, or irregular cycles."
+    elif score < 24:
+        diag = "HCA-PCO (Possible PCOS)"
+        detail = "You show signs of PCOS — such as irregular cycles, excess androgens, or insulin-related symptoms."
     else:
-        diagnosis = "H-PCO (Androgenic & Metabolic Signs)"
-        explanation = "Your answers suggest possible hormonal and metabolic imbalances often seen in PCOS or insulin resistance."
+        diag = "H-PCO (Androgenic + Metabolic)"
+        detail = "You may have both hormonal and metabolic symptoms seen in PCOS and insulin resistance."
 
-    # FINAL MESSAGE
-    st.success("✅ Quiz complete. Analyzing your answers...")
-    st.markdown(f"<h3 style='color: teal; margin-top: 20px;'>🧬 Result: {diagnosis}</h3>", unsafe_allow_html=True)
-    st.markdown(f"<p><b>{explanation}</b></p>", unsafe_allow_html=True)
+    st.success("✅ All done! Analyzing your results...")
+    st.markdown(f"<h3 style='color: teal;'>🧬 Result: {diag}</h3>", unsafe_allow_html=True)
+    st.markdown(f"**{detail}**")
 
     st.info("💡 How InBalance Can Help")
     st.markdown("""
-    InBalance helps you track your symptoms, cycle patterns, skin/hair changes, fatigue and weight — so our team of experts can guide you toward better hormonal balance.
-
-    Whether you need to confirm a diagnosis, adjust your diet, or optimize workouts, we’ve got you covered.
+    InBalance helps you track symptoms, cycles, skin/hair changes, energy and weight — so our expert team can guide you.
+    
+    Whether you’re confirming a diagnosis, adjusting nutrition, or optimizing workouts — we’ve got your back.
     """)
 
-    # QR Code
     qr = Image.open("qr_code.png")
     st.image(qr, width=200)
 
-    # Waitlist CTA
-    st.markdown("**Would you like to join our app waitlist for expert hormonal tracking?**")
-    join = st.radio(" ", ["Yes", "No"])
-    if join == "Yes":
-        st.success("🎉 You're on the list! We'll be in touch soon.")
+    if st.session_state.join_waitlist == "Yes":
+        st.success("🎉 You’re on the waitlist! We’ll be in touch soon.")
 
-    st.button("Restart", on_click=lambda: st.session_state.clear())
+    st.markdown("---")
+    st.button("Start Over", on_click=lambda: st.session_state.clear())
