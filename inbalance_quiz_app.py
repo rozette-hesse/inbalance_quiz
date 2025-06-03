@@ -90,7 +90,7 @@ if st.session_state.q < len(questions):
     if st.button("Next"):
         st.session_state.answers.append(answer)
         st.session_state.q += 1
-        st.experimental_rerun()
+        st.rerun()
 else:
     st.success("✅ All done! Analyzing your answers...")
 
