@@ -99,7 +99,7 @@ if q_index < len(questions):
         score = q["weights"][option_index] * q["multiplier"]
         st.session_state.answers.append(score)
         st.session_state.q += 1
-        st.experimental_rerun()
+        st.rerun()
 
 # --- Results ---
 else:
