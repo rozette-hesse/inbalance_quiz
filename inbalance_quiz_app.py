@@ -134,30 +134,42 @@ if st.session_state.completed:
     total = sum(st.session_state.answers)
 
     # DIAGNOSIS CLUSTER
-    if total < 8:
-        diagnosis = "No strong hormonal patterns detected"
-        explanation = f"""
-        Based on your answers, you don’t currently show strong signs of PCOS or major hormonal imbalance.
-        That’s great! But keep tracking your cycle, especially if anything changes.
-        """
-    elif total < 16:
-        diagnosis = "Ovulatory Imbalance"
-        explanation = f"""
-        Your responses suggest your cycle may not be consistently ovulatory. This may relate to mood shifts,
-        mild acne, or irregular periods. It’s worth keeping an eye on ovulation and energy trends.
-        """
-    elif total < 24:
-        diagnosis = "HCA-PCO (Possible PCOS)"
-        explanation = f"""
-        You show moderate signs commonly associated with PCOS — such as irregular cycles, skin or hair changes, or weight issues.
-        We recommend confirming this with a healthcare provider and tracking symptoms closely.
-        """
-    else:
-        diagnosis = "H-PCO (Androgenic + Metabolic Signs)"
-        explanation = f"""
-        Your answers reflect patterns typically seen in PCOS, insulin resistance, or high androgens.
-        These may affect skin, hair, weight, and cycle balance. A tailored lifestyle plan could help.
-        """
+   # DIAGNOSIS CLUSTER
+if total < 8:
+    diagnosis = "No strong hormonal patterns detected"
+    explanation = f"""
+    Your answers don’t currently show signs of major hormonal imbalance — that’s great!  
+    Cycles seem balanced, and symptoms are within typical range.
+
+    👉 Keep tracking your energy, skin, mood, and periods. Subtle shifts over time can reveal new patterns.  
+    With InBalance, you can monitor changes early and take action when needed.
+    """
+
+elif total < 16:
+    diagnosis = "Ovulatory Imbalance"
+    explanation = f"""
+    Your answers suggest that ovulation may not be happening regularly — or may be disrupted by stress, inflammation, or blood sugar swings.  
+    These patterns often show up as irregular periods, fatigue, skin issues, or mood shifts.
+
+    👉 Supporting ovulation through gentle lifestyle changes — like eating enough, sleeping better, and stabilizing blood sugar — can make a difference.  
+    InBalance helps you see your personal patterns and guides you with expert-backed tips.
+    """
+
+elif total < 24:
+    diagnosis = "HCA-PCO (Possible PCOS)"
+    explanation = f"""
+    Your symptoms align with common PCOS indicators — like irregular cycles, acne, hair changes, or difficulty managing weight.  
+    While only a medical provider can confirm a diagnosis, these signs are worth understanding and addressing.
+
+    👉 InBalance helps you get clarity, track what matters, and create a nutrition/symptom plan tailored to your type.  
+    Our experts can help you feel more in control of your hormones and energy.
+    """
+
+else:
+    diagnosis = "H-PCO (Androgenic + Metabolic Signs)"
+    explanation = f"""
+    Your answers suggest elevated androgens and possible insulin resistance — often seen in PCOS or metabolic imbalance.  
+   
 
     st.success("✅ Quiz complete.")
     st.markdown(f"### 🧬 Result: {diagnosis}")
