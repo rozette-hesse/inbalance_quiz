@@ -5,8 +5,8 @@ from PIL import Image
 st.set_page_config(page_title="InBalance Quiz", layout="centered")
 
 # --- IMAGES ---
-logo = Image.open("Logo-X-2024-01.png")
-qr_code = Image.open("qr-code.png")
+logo = Image.open("logo.png")
+qr_code = Image.open("qr_code.png")
 
 # --- HEADER ---
 st.image(logo, width=120)
