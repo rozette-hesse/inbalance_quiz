@@ -82,19 +82,22 @@ questions = [
 
 # ---------------------- QUIZ FLOW ----------------------
 index = st.session_state.q_index
-question = questions[index]
-st.markdown(f"<h4><b>{question['question']}</b></h4>", unsafe_allow_html=True)
 
-option = st.radio(" ", [opt[0] for opt in question["options"]], key=index)
+if index < len(questions):
+    question = questions[index]
+    st.markdown(f"<h4><b>{question['question']}</b></h4>", unsafe_allow_html=True)
 
-if st.button("Next"):
-    selected_score = [opt[1] for opt in question["options"] if opt[0] == option][0]
-    st.session_state.answers.append(selected_score)
-    st.session_state.q_index += 1
+    option = st.radio(" ", [opt[0] for opt in question["options"]], key=index)
 
-    if st.session_state.q_index >= len(questions):
-        st.session_state.completed = True
-    st.rerun()
+    if st.button("Next"):
+        selected_score = [opt[1] for opt in question["options"] if opt[0] == option][0]
+        st.session_state.answers.append(selected_score)
+        st.session_state.q_index += 1
+
+        if st.session_state.q_index >= len(questions):
+            st.session_state.completed = True
+        st.rerun()
+
 
 # ---------------------- RESULTS ----------------------
 if st.session_state.get("completed"):
