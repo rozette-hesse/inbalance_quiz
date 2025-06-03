@@ -1,39 +1,31 @@
 import streamlit as st
+from PIL import Image
 import openai
+import os
 
-# Load OpenAI API key from Streamlit Secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-# Teal primary theme override (optional)
-st.markdown("""
-    <style>
-    .stButton>button {
-        background-color: #2e9c91;
-        color: white;
-        border-radius: 5px;
-    }
-    .stRadio label {
-        font-size: 16px !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Set page config
+# ✅ Set Streamlit page config FIRST
 st.set_page_config(page_title="InBalance Quiz", layout="centered")
 
-# Center logo
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.image("https://raw.githubusercontent.com/rozette-hesse/inbalance_quiz/main/Logo-X-2024-01.png", width=150)
+# Load OpenAI key securely
+api_key = st.secrets.get("OPENAI_API_KEY", "")
+if api_key:
+    openai.api_key = api_key
 
-# Title and subtitle
-st.markdown("<h1 style='text-align:center;'>🩺 Let’s Check In With Your Hormones</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Quick check for symptoms like hormonal imbalance, insulin resistance, or PCOS.</p>", unsafe_allow_html=True)
+# Load logo and QR code
+logo = Image.open("Logo-X-2024-01.png")
+qr_code = Image.open("Grey White Simple Light Real Estate QR Code.png")
 
-# Define questions and weights
+# --- UI Styling ---
+st.image(logo, width=100)
+st.markdown("## 💠 InBalance Hormonal Health Quiz")
+st.markdown(
+    "Check your symptoms for hormonal imbalance, PCOS or insulin resistance. Takes 1 minute!"
+)
+st.markdown("---")
+
+# --- Questions ---
 questions = [
     {
-        "key": "cycle",
         "question": "How regular was your menstrual cycle in the past year?",
         "options": [
             "Does not apply (on hormonal treatment or pregnant)",
@@ -42,129 +34,126 @@ questions = [
             "Rarely got my period (<6 times/year)"
         ],
         "weights": [0, 1, 6, 8],
-        "cluster": "CA",  # Chronic Anovulation
         "multiplier": 4
     },
     {
-        "key": "hair",
-        "question": "Do you notice excessive thick black hair growth on your face, chest, or back?",
+        "question": "Do you notice excessive thick black hair on your face, chest, or back?",
         "options": [
-            "No, not at all.",
-            "Yes, well-controlled with hair removal.",
-            "Yes, major issue and resistant to removal.",
-            "Yes, with scalp hair thinning or loss."
+            "No, not at all",
+            "Yes, but manageable with hair removal",
+            "Yes, major issue, hard to manage",
+            "Yes, and also losing hair on my scalp"
         ],
         "weights": [1, 5, 7, 8],
-        "cluster": "HYPRA",  # HyperAndrogenism
-        "multiplier": 4
-    },
-    {
-        "key": "acne",
-        "question": "Have you had issues with acne or oily skin in the past year?",
-        "options": [
-            "No skin issues.",
-            "Yes, mild and controlled.",
-            "Yes, often despite treatment.",
-            "Yes, severe and persistent."
-        ],
-        "weights": [1, 4, 6, 8],
-        "cluster": "HYPRA",
         "multiplier": 3
     },
     {
-        "key": "weight",
-        "question": "Have you experienced weight changes in the past year?",
+        "question": "Have you had issues with acne or oily skin?",
         "options": [
-            "Stable weight.",
-            "Stable with effort.",
-            "Gaining without major lifestyle change.",
-            "Can’t lose despite diet/exercise."
+            "No skin problems",
+            "Yes, controlled with treatment",
+            "Yes, frequent despite treatment",
+            "Yes, severe and resistant"
+        ],
+        "weights": [1, 4, 6, 8],
+        "multiplier": 2.5
+    },
+    {
+        "question": "Have you struggled with weight changes?",
+        "options": [
+            "No, my weight is stable",
+            "Stable with effort",
+            "Hard to control without major changes",
+            "Hard to lose despite efforts"
         ],
         "weights": [1, 2, 5, 7],
-        "cluster": "PCOMIR",  # Insulin Resistance / PCOS-like
         "multiplier": 2
     },
     {
-        "key": "fatigue",
-        "question": "Do you feel excessively tired or sleepy after meals?",
+        "question": "Do you feel tired or sleepy after meals?",
         "options": [
-            "No, not really.",
-            "Sometimes after heavy or sugary meals.",
-            "Yes, often regardless of meal.",
-            "Yes, almost daily and it affects alertness."
+            "No",
+            "Sometimes after sugar",
+            "Yes, often",
+            "Yes, almost daily"
         ],
         "weights": [1, 2, 4, 6],
-        "cluster": "PCOMIR",
         "multiplier": 1
-    },
+    }
 ]
 
-# Track state
+# Initialize session
 if "q" not in st.session_state:
     st.session_state.q = 0
     st.session_state.answers = []
 
-# Quiz logic
-if st.session_state.q < len(questions):
-    current = questions[st.session_state.q]
-    
-    # Centered question + radio
-    st.markdown(f"<h4 style='text-align:center;'>{current['question']}</h4>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        answer = st.radio("", current["options"], key=current["key"])
+# --- Display question ---
+q_index = st.session_state.q
+if q_index < len(questions):
+    q = questions[q_index]
+    st.write(f"**{q['question']}**")
+    selected = st.radio("", q["options"], key=f"q{q_index}")
 
     if st.button("Next"):
-        st.session_state.answers.append({
-            "cluster": current["cluster"],
-            "score": current["weights"][current["options"].index(answer)] * current["multiplier"]
-        })
+        option_index = q["options"].index(selected)
+        score = q["weights"][option_index] * q["multiplier"]
+        st.session_state.answers.append(score)
         st.session_state.q += 1
-        st.rerun()
+        st.experimental_rerun()
+
+# --- Results ---
 else:
     st.success("✅ All done! Analyzing your answers…")
+    total_score = sum(st.session_state.answers)
 
-    # Calculate cluster scores
-    cluster_totals = {"CA": 0, "HYPRA": 0, "PCOMIR": 0}
-    for ans in st.session_state.answers:
-        cluster_totals[ans["cluster"]] += ans["score"]
+    # Cluster logic
+    CA = st.session_state.answers[0]  # Menstrual
+    HIRSUTISM = st.session_state.answers[1] * 4
+    ACNE = st.session_state.answers[2] * 3
+    HYPRA = HIRSUTISM + ACNE
+    PCOMIR = st.session_state.answers[3] + st.session_state.answers[4]
 
-    # Determine phenotype
-    CA = cluster_totals["CA"]
-    HYPRA = cluster_totals["HYPRA"]
-    PCOMIR = cluster_totals["PCOMIR"]
-
+    # Diagnose based on cluster thresholds
     if CA >= 20 and HYPRA >= 20 and PCOMIR >= 10:
-        result = "HCA-PCO (Possible PCOS)"
+        diagnosis = "HCA-PCO (Possible PCOS)"
     elif CA >= 20 and HYPRA >= 20:
-        result = "H-CA (Possible PCOS)"
+        diagnosis = "H-CA (Hormonal Imbalance)"
     elif HYPRA >= 20 and PCOMIR >= 10:
-        result = "H-PCO (Possible PCOS)"
+        diagnosis = "H-PCO (Androgen + Metabolic)"
     elif CA >= 20 and PCOMIR >= 10:
-        result = "PCO-CA (Possible PCOS)"
+        diagnosis = "PCO-CA (Cycle + Metabolic)"
     else:
-        result = "No significant PCOS pattern detected"
+        diagnosis = "No strong hormonal patterns detected."
 
-    st.markdown(f"<h2 style='text-align:center;'>🧬 Result: {result}</h2>", unsafe_allow_html=True)
+    st.markdown(f"### 🧬 Result: **{diagnosis}**")
 
-    # AI feedback
-    prompt = f"""The quiz detected: {result}.
-    Please give a short, friendly explanation of what this might mean, and suggest one lifestyle tip or habit that can help improve hormonal balance."""
-
-    try:
-        ai_response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        advice = ai_response.choices[0].message.content.strip()
-        st.info(advice)
-    except:
-        st.warning("Unable to fetch AI feedback. (OpenAI key missing or request failed)")
+    # --- AI recommendation ---
+    if api_key:
+        try:
+            prompt = (
+                f"The user was diagnosed with: {diagnosis}. "
+                "Give one short, evidence-based tip in less than 50 words to help support her hormonal balance."
+            )
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=60,
+            )
+            feedback = response.choices[0].message.content
+            st.info(f"💡 AI Tip: {feedback}")
+        except Exception as e:
+            st.warning("⚠️ Unable to fetch AI tip. Please try again later.")
+    else:
+        st.warning("🔒 No OpenAI key set. Tip not available.")
 
     st.markdown("---")
-    st.markdown("📲 Want expert tracking & care?")
-    st.markdown("[Join the waitlist here](https://linktr.ee/Inbalance.ai)")
+    st.markdown("Want expert tracking & care?")
 
-    # Show QR
-    st.image("https://raw.githubusercontent.com/rozette-hesse/inbalance_quiz/main/Grey%20White%20Simple%20Light%20Real%20Estate%20QR%20Code.png", width=120)
+    st.markdown("[👉 Join the waitlist here](https://linktr.ee/Inbalance.ai)")
 
+    st.image(qr_code, width=100)
+
+    if st.button("Start Over"):
+        st.session_state.q = 0
+        st.session_state.answers = []
+        st.experimental_rerun()
