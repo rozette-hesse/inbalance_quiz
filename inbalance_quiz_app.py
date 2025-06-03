@@ -132,7 +132,7 @@ else:
                 "\n".join([f"- {r}" for r in recs]))
 
     # --- QR + Reset ---
-    st.image(qr_code, width=180)
+    st.image(qr_code, width=300)
     if st.button("🔁 Start Over"):
         for key in ["q_index", "total_score", "answers"]:
             del st.session_state[key]
