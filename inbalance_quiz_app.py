@@ -5,6 +5,12 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
+
+
+# Streamlit page setup
+st.set_page_config(page_title="InBalance Hormonal Quiz", layout="centered")
+
+
 # --------- Initialize session state keys ----------
 if "q_index" not in st.session_state:
     st.session_state.q_index = 0
@@ -12,17 +18,10 @@ if "answers" not in st.session_state:
     st.session_state.answers = []
 if "completed" not in st.session_state:
     st.session_state.completed = False
-
-
-
-# Streamlit page setup
-st.set_page_config(page_title="InBalance Hormonal Quiz", layout="centered")
-
-
-# --------- Initialize session state ----------
-if "q_index" not in st.session_state:
-    st.session_state.q_index = 0
-...
+if "name" not in st.session_state:
+    st.session_state.name = ""
+if "email" not in st.session_state:
+    st.session_state.email = ""
 
 
 # Load logo and QR code
