@@ -85,41 +85,37 @@ if q_index < len(questions):
 
 # Final screen
 else:
-    st.success("✅ You're done! Here's what your responses suggest:")
+    st.success("✅ Here's your personalized feedback:")
 
-    tag_collector = []
-    for i, feedback in enumerate(st.session_state.answers):
-        if feedback:
-            st.markdown(f"{feedback}")
-            tag_collector.append(feedback.lower())
-    st.markdown("---")
+    # Collect non-empty responses
+    feedback_lines = [f for f in st.session_state.answers if f]
 
-    # Simple pattern tag
-    summary = "No major imbalance detected."
-    for tag, keys in diagnosis_keywords.items():
-        if any(k in " ".join(tag_collector) for k in keys):
-            summary = tag
-            break
+    if not feedback_lines:
+        message = "Your answers don’t show strong signs of hormonal imbalance. That’s great — but it’s still smart to keep an eye on changes in your body."
+    else:
+        message = " ".join(feedback_lines)
 
+    # Display as one paragraph
     st.markdown(f"""
-    <div style='padding: 20px; background-color: #f1fcf9; border-radius: 10px; margin-top: 20px;'>
-        <h4 style='color: teal;'>🧠 Hormonal Pattern Likely: <u>{summary}</u></h4>
-        <p>This is a simplified health pattern based on your answers — not a diagnosis, but a guide to explore further.</p>
+    <div style='padding: 20px; background-color: #f1fcf9; border-radius: 10px; font-size: 16px; line-height: 1.6'>
+        💡 <strong>Your personalized insight:</strong><br><br>
+        {message}
     </div>
     """, unsafe_allow_html=True)
 
-    # How InBalance helps
-    st.markdown("""
-    <div style='margin-top: 30px; padding: 20px; background-color: #e8f6f6; border-radius: 10px;'>
-        <h4 style='color: teal;'>💡 How InBalance Can Help</h4>
-        <p>InBalance helps you monitor your cycle, symptoms, skin/hair changes, energy and more. We sync this with your cycle phase — giving you clear, daily recommendations.</p>
-        <p>Our team of experts can guide you from diagnosis to treatment through the app. Whether it’s PCOS, fatigue, or just cycle confusion — we’re your personalized companion.</p>
+    # Likely hormonal pattern summary
+    st.markdown(f"""
+    <div style='padding: 20px; background-color: #e8f6f6; border-radius: 10px; margin-top: 20px;'>
+        <h4 style='color: teal;'>How InBalance Can Help</h4>
+        <p>InBalance helps you monitor symptoms like acne, fatigue, irregular cycles or sugar crashes — and understand how they connect to your hormones.</p>
+        <p>Our team of experts helps you move from confusion to clarity with cycle-synced nutrition, lifestyle and fitness tracking.</p>
+        <p>You deserve personalized care — and we’re here for it.</p>
     </div>
     """, unsafe_allow_html=True)
 
     # QR code
-    st.image("qr_code.png", width=300)
-    st.markdown("<p style='text-align: center;'>Scan to follow us or join the app waitlist 💙</p>", unsafe_allow_html=True)
+    st.image("qr_code.png", width=350)
+    st.markdown("<p style='text-align: center;'>Scan to follow us or get early access 💙</p>", unsafe_allow_html=True)
 
-    # Restart button
+    # Restart
     st.button("🔁 Start Over", on_click=lambda: st.session_state.clear())
