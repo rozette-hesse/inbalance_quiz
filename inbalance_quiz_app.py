@@ -85,25 +85,32 @@ if q_index < len(questions):
 
 # Final screen
 else:
-    st.success("✅ Here's your personalized feedback:")
+    st.success("✅ All done! Analyzing your answers…")
 
-    # Collect non-empty responses
+    # Show final diagnosis result
+    st.markdown(f"""
+    <h3 style='color: teal; margin-top: 20px;'>🧬 Result: {diagnosis}</h3>
+    """, unsafe_allow_html=True)
+
+    # Generate a personalized summary paragraph (based on feedback messages from answers)
     feedback_lines = [f for f in st.session_state.answers if f]
-
+    
     if not feedback_lines:
-        message = "Your answers don’t show strong signs of hormonal imbalance. That’s great — but it’s still smart to keep an eye on changes in your body."
+        personalized_summary = (
+            "Your answers don’t show strong signs of hormonal imbalance. "
+            "That’s great — but it’s still important to stay in tune with your cycle."
+        )
     else:
-        message = " ".join(feedback_lines)
+        personalized_summary = " ".join(feedback_lines)
 
-    # Display as one paragraph
     st.markdown(f"""
     <div style='padding: 20px; background-color: #f1fcf9; border-radius: 10px; font-size: 16px; line-height: 1.6'>
         💡 <strong>Your personalized insight:</strong><br><br>
-        {message}
+        {personalized_summary}
     </div>
     """, unsafe_allow_html=True)
 
-    # Likely hormonal pattern summary
+    # How InBalance Can Help (static content)
     st.markdown(f"""
     <div style='padding: 20px; background-color: #e8f6f6; border-radius: 10px; margin-top: 20px;'>
         <h4 style='color: teal;'>How InBalance Can Help</h4>
@@ -113,9 +120,7 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    # QR code
-    st.image("qr_code.png", width=350)
+    # QR code and restart
+    st.image("qr_code.png", width=300)
     st.markdown("<p style='text-align: center;'>Scan to follow us or get early access 💙</p>", unsafe_allow_html=True)
-
-    # Restart
     st.button("🔁 Start Over", on_click=lambda: st.session_state.clear())
