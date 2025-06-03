@@ -130,11 +130,7 @@ if 1 <= index <= len(questions):
                 st.rerun()
 
 # ---------------------- RESULTS ----------------------
-if st.session_state.completed:
-    total = sum(st.session_state.answers)
-
-    # DIAGNOSIS CLUSTER
-   # DIAGNOSIS CLUSTER
+# DIAGNOSIS CLUSTER
 if total < 8:
     diagnosis = "No strong hormonal patterns detected"
     explanation = f"""
@@ -169,7 +165,12 @@ else:
     diagnosis = "H-PCO (Androgenic + Metabolic Signs)"
     explanation = f"""
     Your answers suggest elevated androgens and possible insulin resistance — often seen in PCOS or metabolic imbalance.  
-   
+    This can impact your skin, hair, cycle, mood, and ability to manage weight.
+
+    👉 InBalance gives you tools to balance blood sugar, reduce inflammation, and track improvements — while experts help guide your care.  
+    A tailored plan (with food, movement, and stress tools) can support real hormonal change.
+    """
+
 
     st.success("✅ Quiz complete.")
     st.markdown(f"### 🧬 Result: {diagnosis}")
