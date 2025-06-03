@@ -1,23 +1,27 @@
 import streamlit as st
 from PIL import Image
 
-# --- PAGE SETTINGS ---
+# --------------------- PAGE CONFIG ---------------------
 st.set_page_config(page_title="InBalance Quiz", layout="centered")
 
-# --- IMAGES ---
+# --------------------- LOAD IMAGES ---------------------
 logo = Image.open("logo.png")
 qr_code = Image.open("qr_code.png")
 
-# --- HEADER ---
-st.image(logo, width=120)
-st.title("InBalance Hormonal Health Quiz")
+# --------------------- HEADER ---------------------
 st.markdown(
-    "<div style='text-align: center; color: teal;'>Check for signs of hormonal imbalance, PCOS, or insulin resistance in under 1 minute.</div>",
-    unsafe_allow_html=True,
+    """
+    <div style='text-align: center;'>
+        <img src='https://raw.githubusercontent.com/rozettesheh/inbalance_quiz/main/Logo-X-2024-01.png' width='160'/>
+        <h1 style='color: #008080; font-size: 2.5em;'>InBalance Hormonal Health Quiz</h1>
+        <p style='font-size: 1.1em;'>Take a 1-minute check for <strong>hormonal imbalance</strong>, <strong>PCOS</strong> or <strong>insulin resistance</strong>.</p>
+    </div>
+    """, unsafe_allow_html=True
 )
+
 st.markdown("---")
 
-# --- QUESTIONS ---
+# --------------------- QUESTIONS ---------------------
 questions = [
     {
         "question": "🩸 How regular was your menstrual cycle in the past year?",
@@ -76,29 +80,25 @@ questions = [
     },
 ]
 
-# --- SESSION INIT ---
+# --------------------- SESSION INIT ---------------------
 if "q" not in st.session_state:
     st.session_state.q = 0
     st.session_state.answers = []
 
-# --- QUESTION DISPLAY ---
+# --------------------- QUIZ FLOW ---------------------
 if st.session_state.q < len(questions):
     q = questions[st.session_state.q]
-    st.subheader(q["question"])
+    st.markdown(f"### {q['question']}")
     selected = st.radio("", [opt[0] for opt in q["options"]], key=q["key"])
     if st.button("Next"):
-        option_score = dict(q["options"])[selected]
-        st.session_state.answers.append((option_score, q["weight"]))
+        score = dict(q["options"])[selected]
+        st.session_state.answers.append((score, q["weight"]))
         st.session_state.q += 1
         st.rerun()
-else:
-    # --- RESULTS ---
-    st.success("✅ All done! Analyzing your answers…")
-    
-    # Calculate cluster scores
-    scores = [score * weight for score, weight in st.session_state.answers]
-    total_score = sum(scores)
 
+else:
+    # --------------------- CALCULATE SCORES ---------------------
+    st.success("✅ All done! Analyzing your answers…")
     q1_score = st.session_state.answers[0][0] * 4
     q2_score = st.session_state.answers[1][0] * 4
     q3_score = st.session_state.answers[2][0] * 3
@@ -109,7 +109,6 @@ else:
     HYPRA = q2_score + q3_score
     PCOMIR = q4_score + q5_score
 
-    # --- Diagnosis Logic ---
     if CA >= 20 and HYPRA >= 20 and PCOMIR >= 10:
         result = "HCA-PCO (Possible PCOS)"
     elif CA >= 20 and HYPRA >= 20:
@@ -121,15 +120,15 @@ else:
     else:
         result = "No strong hormonal patterns detected."
 
-    st.markdown(f"### 🧬 Result: **{result}**")
+    st.markdown(f"<h3 style='color: teal;'>🧬 Result: {result}</h3>", unsafe_allow_html=True)
 
-    # --- Follow-up CTA ---
+    # --------------------- CALL TO ACTION ---------------------
     st.markdown("---")
-    st.markdown("**Want expert tracking & care?**")
+    st.markdown("### 💡 Want expert tracking & care?")
     st.markdown("👉 [Join the waitlist here](https://linktr.ee/Inbalance.ai)")
-    st.image(qr_code, width=100)
+    st.image(qr_code, width=160)
 
-    if st.button("Start Over"):
+    if st.button("🔁 Start Over"):
         st.session_state.q = 0
         st.session_state.answers = []
         st.rerun()
