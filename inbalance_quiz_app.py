@@ -1,169 +1,147 @@
 import streamlit as st
 from PIL import Image
 
-# ---------- CONFIGURATION ----------
-st.set_page_config(page_title="InBalance Quiz", layout="centered")
-st.markdown("""
-    <style>
-        .big-question {
-            font-size: 24px !important;
-            font-weight: bold;
-        }
-        .recommend-box {
-            background-color: #f0fdfb;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #d2f4ee;
-        }
-        .diag-box {
-            background-color: #e9f7ef;
-            padding: 18px;
-            border-left: 5px solid teal;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-    </style>
-""", unsafe_allow_html=True)
+# Page setup
+st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
 
-# ---------- LOGO ----------
+# Load images
 logo = Image.open("logo.png")
-st.image(logo, use_column_width="auto")
+qr_code = Image.open("qr_code.png")
 
-st.markdown("<h2 style='text-align:center; color: teal;'>InBalance Hormonal Health Quiz</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Quick check-in to see if your symptoms might signal a hormonal imbalance.</p>", unsafe_allow_html=True)
+# Centered logo
+st.image(logo, use_column_width=True)
 
-# ---------- QUESTIONS ----------
+# Title
+st.markdown("<h1 style='text-align: center; color: teal;'>InBalance Hormonal Health Quiz</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Take a 1-minute check for <strong>hormonal imbalance, PCOS</strong>, or <strong>insulin resistance</strong>.</p>", unsafe_allow_html=True)
+st.markdown("---")
+
+# Quiz questions
 questions = [
     {
         "question": "How regular was your menstrual cycle in the past year?",
         "options": [
-            "Does not apply (on hormonal treatment or pregnant)",
-            "Regular (25–35 days)",
-            "Often irregular (<25 or >35 days)",
-            "Rarely got my period (<6 times/year)"
+            ("Does not apply (use of hormonal treatments or pregnancies in the past year)", 0),
+            ("Regular most of the time (25–35 days)", 1),
+            ("Often irregular (< 25 days or > 35 days)", 6),
+            ("I rarely got my period this year (< 6 periods)", 8)
         ]
     },
     {
-        "question": "Have you experienced excessive hair growth (face, chest, back)?",
+        "question": "Do you notice excessive thick black hair growth on your face, chest, or back?",
         "options": [
-            "No, not at all",
-            "Yes, but managed with removal techniques",
-            "Yes, and it's hard to control",
-            "Yes, plus scalp hair thinning"
+            ("No, not at all.", 1),
+            ("Yes, it’s a noticeable issue that is well-controlled with hair removal techniques.", 5),
+            ("Yes, it’s a major issue that is resistant to hair removal techniques.", 7),
+            ("Yes, excessive hair growth is an issue alongside hair thinning or hair-loss on the scalp", 8)
         ]
     },
     {
-        "question": "Have you had acne or oily skin issues recently?",
+        "question": "Have you had issues with acne or oily skin in the past year?",
         "options": [
-            "No",
-            "Sometimes around period",
-            "Yes, it's often persistent",
-            "Yes, severe and cystic"
+            ("No, I'm not facing any skin troubles", 1),
+            ("Yes, but well controlled with skin treatments", 4),
+            ("Yes, often despite regular skin treatments", 6),
+            ("Yes, severe and resistant to skin treatments", 8)
         ]
     },
     {
-        "question": "Do you feel fatigued, gain weight easily, or crave sugar often?",
+        "question": "Have you experienced weight changes in the past year?",
         "options": [
-            "No or rarely",
-            "Occasionally",
-            "Often",
-            "Very frequently"
+            ("No, my weight is generally stable.", 1),
+            ("No, my weight is more or less stable as long as I work out and eat mindfully.", 2),
+            ("Yes, I’m struggling to control my weight without significant changes in diet and/or exercise.", 5),
+            ("Yes, I’m struggling to lose weight despite diets and/or regular workouts.", 7)
         ]
     },
     {
-        "question": "Have you ever been told you may have PCOS or insulin resistance?",
+        "question": "Do you feel excessively tired or sleepy after meals?",
         "options": [
-            "No",
-            "Maybe – not confirmed",
-            "Yes – suspected",
-            "Yes – diagnosed"
+            ("No, not really.", 1),
+            ("Sometimes after heavy or sugary meals.", 2),
+            ("Yes, often regardless of what I eat.", 4),
+            ("Yes, almost daily with trouble staying alert and awake after meals.", 6)
         ]
     }
 ]
 
-# ---------- RECOMMENDATIONS ----------
-recommendations = [
-    "Irregular or missing periods can be a sign of ovulatory or hormonal imbalance.",
-    "Hair growth and scalp hair loss may point toward elevated androgen levels.",
-    "Persistent acne or oily skin often reflects inflammation or hormonal shifts.",
-    "Fatigue and sugar cravings may suggest blood sugar dysregulation or insulin resistance.",
-    "A past diagnosis or suspicion of PCOS or insulin resistance warrants regular monitoring."
-]
+# Score weight per question
+weights = [4, 3, 2.5, 2, 1]
 
-# ---------- SESSION SETUP ----------
-if "answers" not in st.session_state:
-    st.session_state.answers = []
-if "step" not in st.session_state:
-    st.session_state.step = 0
+# Store answers
+if "q_index" not in st.session_state:
+    st.session_state.q_index = 0
+    st.session_state.total_score = 0
+    st.session_state.selected_answers = []
 
-# ---------- DISPLAY QUESTIONS ----------
-if st.session_state.step < len(questions):
-    q = questions[st.session_state.step]
-    st.markdown(f"<div class='big-question'>{q['question']}</div>", unsafe_allow_html=True)
-    answer = st.radio("", q["options"], key=f"q{st.session_state.step}")
+# Display questions one by one
+if st.session_state.q_index < len(questions):
+    q = questions[st.session_state.q_index]
+    st.markdown(f"<h3 style='color: black; font-size: 24px; font-weight: bold;'>{q['question']}</h3>", unsafe_allow_html=True)
+    selected = st.radio(" ", [opt[0] for opt in q["options"]], index=None)
 
-    if st.button("Next"):
-        st.session_state.answers.append(answer)
-        st.session_state.step += 1
+    if st.button("Next") and selected:
+        points = dict(q["options"])[selected]
+        st.session_state.total_score += points * weights[st.session_state.q_index]
+        st.session_state.selected_answers.append(selected)
         st.rerun()
 
-# ---------- DISPLAY RESULTS ----------
 else:
-    answers = st.session_state.answers
+    score = st.session_state.total_score
 
-    # ----- Score-based Diagnosis -----
-    score = 0
-    weights = [0, 1, 2, 3]  # For 4-option questions
-    for ans_idx, ans in enumerate(answers):
-        score += weights[questions[ans_idx]["options"].index(ans)]
-
-    if score >= 11:
-        diagnosis = "HCA-PCO (Possible PCOS)"
-    elif score >= 8:
-        diagnosis = "H-PCO (Androgen + Metabolic)"
-    elif score >= 5:
-        diagnosis = "H-IR (Insulin-Resistant Type)"
-    else:
+    # Determine diagnosis
+    if score < 25:
         diagnosis = "No strong hormonal patterns detected"
+        detail = "Your symptoms don’t show strong signs of PCOS or major hormonal dysfunction. That’s great — but keep monitoring your cycle."
+    elif 25 <= score < 35:
+        diagnosis = "Possible Ovulatory Imbalance"
+        detail = "You may have signs of irregular ovulation, which can impact fertility or cycle regularity. Consider further hormonal testing."
+    elif 35 <= score < 45:
+        diagnosis = "Possible Metabolic-Hormonal Imbalance"
+        detail = "You may have signs of both insulin resistance and hormonal dysregulation. A full checkup is recommended."
+    elif 45 <= score < 55:
+        diagnosis = "H-PCO (Androgenic PCOS)"
+        detail = "Symptoms suggest elevated male hormones like testosterone — often linked to acne, hair growth, and cycle issues."
+    else:
+        diagnosis = "HCA-PCO (Classic PCOS)"
+        detail = "Your symptoms are strongly suggestive of PCOS — including hormonal, cycle, and metabolic issues. A medical consult is highly recommended."
 
-    st.markdown(f"<div class='diag-box'><h4>🧬 Result: {diagnosis}</h4></div>", unsafe_allow_html=True)
+    # Header
+    st.success("✅ All done! Analyzing your answers…")
+    st.markdown(f"<h3 style='color: teal; margin-top: 20px;'>🧬 Result: {diagnosis}</h3>", unsafe_allow_html=True)
+    st.write(f"**{detail}**")
 
-    # ----- Personalized Recommendation Summary -----
-    st.success("Here's your personalized feedback:")
-
+    # Recommendations (based on selected options only — NOT showing answers)
     recs = []
-    for i, ans in enumerate(answers):
-        if i == 0 and "irregular" in ans.lower():
-            recs.append(recommendations[0])
-        if i == 1 and "yes" in ans.lower():
-            recs.append(recommendations[1])
-        if i == 2 and ("persistent" in ans.lower() or "severe" in ans.lower()):
-            recs.append(recommendations[2])
-        if i == 3 and ("often" in ans.lower() or "very" in ans.lower()):
-            recs.append(recommendations[3])
-        if i == 4 and ("yes" in ans.lower()):
-            recs.append(recommendations[4])
+    ans = st.session_state.selected_answers
+
+    if "I rarely got my period" in ans[0] or "Often irregular" in ans[0]:
+        recs.append("Cycle irregularity may signal ovulatory issues. Tracking ovulation patterns could be helpful.")
+
+    if "hair thinning" in ans[1] or "major issue" in ans[1]:
+        recs.append("Excessive hair growth + thinning may reflect high androgen levels (testosterone). Consider testing.")
+
+    if "persistent" in ans[2] or "resistant" in ans[2]:
+        recs.append("Persistent acne may signal inflammation or excess androgens.")
+
+    if "struggling" in ans[3] or "lose weight despite" in ans[3]:
+        recs.append("Weight struggles despite effort may suggest insulin resistance.")
+
+    if "daily" in ans[4] or "often" in ans[4]:
+        recs.append("Fatigue after meals may reflect unstable blood sugar or early insulin resistance.")
 
     if recs:
-        st.markdown(f"<div class='recommend-box'><ul>" + "".join([f"<li>{r}</li>" for r in recs]) + "</ul></div>", unsafe_allow_html=True)
-    else:
-        st.info("Your symptoms seem minimal — keep tracking to stay in tune with your cycle.")
+        st.markdown("### 🧠 How InBalance Can Help")
+        with st.container():
+            st.info(
+                "InBalance helps you track symptoms, spot patterns, and make sense of skin, cycle, or energy changes — so you can take informed steps.\n\n" +
+                "\n".join([f"- {r}" for r in recs])
+            )
 
-    # ----- InBalance Support -----
-    st.markdown("""
-        <div class='recommend-box'>
-            <h5>💡 How InBalance Can Help</h5>
-            InBalance helps you track your symptoms, cycle patterns, skin/hair changes, fatigue, and weight — so our team of experts can guide you toward better hormonal balance.<br><br>
-            Whether you need to confirm a diagnosis, adjust your diet, or optimize workouts, we’ve got you covered.
-        </div>
-    """, unsafe_allow_html=True)
-
-    # QR Code
-    qr_code = Image.open("qr_code.png")
-    st.image(qr_code, width=180)
-
-    # Restart
+    # QR code & restart
+    st.image(qr_code, caption="Scan to learn more", width=300)
     if st.button("🔁 Start Over"):
-        st.session_state.answers = []
-        st.session_state.step = 0
+        st.session_state.q_index = 0
+        st.session_state.total_score = 0
+        st.session_state.selected_answers = []
         st.rerun()
