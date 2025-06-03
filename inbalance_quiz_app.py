@@ -21,7 +21,12 @@ st.markdown("<p style='text-align: center;'>A 1-minute quiz to help you understa
 
 # Google Sheets connection
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = ServiceAccountCredentials.from_json_keyfile_name("inbalance-creds.json", scope)
+import json
+from google.oauth2.service_account import Credentials
+
+credentials_dict = st.secrets["gcp_service_account"]
+credentials = Credentials.from_service_account_info(credentials_dict, scopes=scope)
+
 client = gspread.authorize(credentials)
 sheet = client.open("InBalance_Quiz_Responses").sheet1
 
