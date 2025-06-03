@@ -108,7 +108,7 @@ index = st.session_state.q_index
 if 1 <= index <= len(questions):
     q = questions[index - 1]
     st.markdown(f"<h4><b>{q['question']}</b></h4>", unsafe_allow_html=True)
-    answer = st.radio(" ", [opt[0] for opt in q["options"]], index=None)
+    answer = st.radio(" ", [opt[0] for opt in q["options"]], index=None, key=index)
 
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -119,47 +119,77 @@ if 1 <= index <= len(questions):
                 st.rerun()
     with col2:
         if st.button("Next →"):
-            score = next(score for text, score in q["options"] if text == answer)
-            st.session_state.answers.append(score)
-            st.session_state.q_index += 1
-            if st.session_state.q_index > len(questions):
-                st.session_state.completed = True
-            st.rerun()
+            if answer is None:
+                st.warning("Please select an option before proceeding.")
+            else:
+                score = next(score for text, score in q["options"] if text == answer)
+                st.session_state.answers.append(score)
+                st.session_state.q_index += 1
+                if st.session_state.q_index > len(questions):
+                    st.session_state.completed = True
+                st.rerun()
 
-# -------------------- RESULTS --------------------
+# ---------------------- RESULTS ----------------------
 if st.session_state.completed:
     total = sum(st.session_state.answers)
+
+    # DIAGNOSIS CLUSTER
     if total < 8:
         diagnosis = "No strong hormonal patterns detected"
-        explanation = "No strong signs of PCOS or hormonal dysfunction. Keep monitoring your cycle for changes."
+        explanation = f"""
+        Based on your answers, you don’t currently show strong signs of PCOS or major hormonal imbalance.
+        That’s great! But keep tracking your cycle, especially if anything changes.
+        """
     elif total < 16:
         diagnosis = "Ovulatory Imbalance"
-        explanation = "Some symptoms may suggest mild hormonal fluctuations affecting ovulation."
+        explanation = f"""
+        Your responses suggest your cycle may not be consistently ovulatory. This may relate to mood shifts,
+        mild acne, or irregular periods. It’s worth keeping an eye on ovulation and energy trends.
+        """
     elif total < 24:
         diagnosis = "HCA-PCO (Possible PCOS)"
-        explanation = "Several features align with PCOS patterns — cycle irregularity, weight changes, etc."
+        explanation = f"""
+        You show moderate signs commonly associated with PCOS — such as irregular cycles, skin or hair changes, or weight issues.
+        We recommend confirming this with a healthcare provider and tracking symptoms closely.
+        """
     else:
-        diagnosis = "H-PCO (Androgenic & Metabolic Signs)"
-        explanation = "Symptoms suggest possible PCOS with hormonal and metabolic signs."
+        diagnosis = "H-PCO (Androgenic + Metabolic Signs)"
+        explanation = f"""
+        Your answers reflect patterns typically seen in PCOS, insulin resistance, or high androgens.
+        These may affect skin, hair, weight, and cycle balance. A tailored lifestyle plan could help.
+        """
 
-    st.success("✅ Done! Here's your summary:")
+    st.success("✅ Quiz complete.")
     st.markdown(f"### 🧬 Result: {diagnosis}")
-    st.write(explanation)
+    st.markdown(f"<p style='font-size: 16px;'>{explanation}</p>", unsafe_allow_html=True)
 
     st.info("💡 How InBalance Can Help")
     st.markdown("""
-    InBalance helps track symptoms, cycles, fatigue, weight, and skin changes. Our team gives personalized guidance to support your hormonal balance journey.
+    InBalance helps you track symptoms, cycles, fatigue, skin changes, and more — and our experts use that data to guide your care.
+
+    Whether you need a diagnosis, want to balance hormones, or just track better — we’ve got you.
     """)
 
-    # -------------------- WAITLIST --------------------
-    st.markdown("### 📲 Would you like to join the InBalance app waitlist?")
-    join = st.radio("Join the waitlist?", ["Yes", "No"], key="waitlist")
+    # ✅ QR Code for App Waitlist
+    try:
+        qr = Image.open("qr_code.png")
+        st.image(qr, width=200)
+    except:
+        st.warning("⚠️ QR code image not found. Make sure `qr_code.png` is in your app folder.")
+
+    # ✅ Waitlist CTA
+    st.markdown("### 💬 Want to join the InBalance app waitlist?")
+    join = st.radio("Join waitlist?", ["Yes", "No"], index=None, key="waitlist")
 
     extra_info = {}
     if join == "Yes":
         extra_info["Tracking"] = st.radio("Do you currently track your cycle or symptoms?", [
-            "Yes, with an app", "Yes, manually", "No, but I want to", "No, and I don’t know where to start", "Other"
-        ])
+            "Yes, with an app",
+            "Yes, manually",
+            "No, but I want to",
+            "No, and I don’t know where to start",
+            "Other"
+        ], index=None)
 
         extra_info["Symptoms"] = st.multiselect("What symptoms do you deal with most often?", [
             "Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating",
@@ -168,17 +198,17 @@ if st.session_state.completed:
 
         extra_info["Goal"] = st.radio("What is your main health goal right now?", [
             "Understand my cycle better",
-            "Reduce fatigue, acne, or cravings",
+            "Reduce symptoms like fatigue, acne, or cravings",
             "Looking for diagnosis",
-            "Want a lifestyle plan (diet/supplements)",
+            "Want a personalized lifestyle plan",
             "Just curious",
             "Other"
-        ])
+        ], index=None)
 
         extra_info["Notes"] = st.text_area("Anything you’d like us to know?")
 
-    # -------------------- SAVE TO GOOGLE SHEETS --------------------
-    def save_to_google_sheets():
+    # ✅ Save to Google Sheets (Optional)
+    if st.button("Finish & Save"):
         try:
             scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
             creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
@@ -198,12 +228,9 @@ if st.session_state.completed:
                 extra_info.get("Notes", ""),
             ]
             worksheet.append_row(row)
-            st.success("✅ Your answers have been saved.")
+            st.success("✅ Your answers were saved.")
         except Exception as e:
             st.error("❌ Could not save your data.")
             st.text(str(e))
 
-    if st.button("Finish & Save"):
-        save_to_google_sheets()
-        st.button("Restart Quiz", on_click=lambda: st.session_state.clear())
-
+    st.button("Restart Quiz", on_click=lambda: st.session_state.clear())
