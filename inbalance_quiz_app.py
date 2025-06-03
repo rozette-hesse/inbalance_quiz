@@ -120,7 +120,7 @@ else:
     """, unsafe_allow_html=True)
 
     # QR Code to Linktree
-    st.image("qr_code.png", width=300)
+    st.image("qr_code.png", width=400)
     st.markdown("<p style='text-align: center;'>Scan to follow or join our waitlist 💙</p>", unsafe_allow_html=True)
 
     # Restart
