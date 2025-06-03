@@ -8,7 +8,7 @@ st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered
 logo = Image.open("logo.png")
 qr_code = Image.open("qr_code.png")
 
-st.image(logo,  width=250)
+st.image(logo,  width=200)
 
 # --- Header ---
 st.markdown("<h1 style='text-align: center; color: teal;'>Let’s Understand Your Hormonal Health, Together 💫</h1>", unsafe_allow_html=True)
