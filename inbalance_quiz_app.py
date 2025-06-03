@@ -114,10 +114,50 @@ elif index == len(questions):
     st.markdown("**Would you like to join our app waitlist for expert hormonal tracking?**")
     join = st.radio(" ", ["Yes", "No"], key="waitlist")
 
+    if join == "Yes":
+        st.markdown("### 💬 Just a few more quick questions!")
+
+        st.session_state.track_cycle = st.radio(
+            "Do you currently track your cycle or symptoms?",
+            [
+                "Yes, with an app",
+                "Yes, manually",
+                "No, but I want to",
+                "No, and I don’t know where to start",
+                "Other"
+            ],
+            key="track"
+        )
+
+        st.session_state.symptoms = st.multiselect(
+            "What symptoms do you deal with most often?",
+            [
+                "Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating",
+                "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"
+            ],
+            key="symptoms"
+        )
+
+        st.session_state.goal = st.radio(
+            "What is your main health goal right now?",
+            [
+                "I want to understand my cycle better",
+                "I want to reduce symptoms like fatigue, acne, or cravings",
+                "I’m looking for a diagnosis or medical answers",
+                "I want a personalized lifestyle plan (nutrition, supplements, etc.)",
+                "I'm just curious for now",
+                "Other"
+            ],
+            key="goal"
+        )
+
+        st.session_state.notes = st.text_area("Anything you’d like us to know?", key="notes")
+
     if st.button("Finish"):
         st.session_state.completed = True
         st.session_state.join_waitlist = join
         st.rerun()
+
 
 # ----------------------- RESULTS -----------------------
 if st.session_state.completed:
