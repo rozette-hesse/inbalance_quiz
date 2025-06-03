@@ -106,23 +106,28 @@ index = st.session_state.q_index
 if index < len(questions):
     q = questions[index]
     st.markdown(f"### {q['q']}")
-    selected_option = st.radio(" ", [opt[0] for opt in q["options"]], key=f"q{index}")
+
+    options = ["-- Please select --"] + [opt[0] for opt in q["options"]]
+    selected_option = st.radio(" ", options, key=f"q{index}")
 
     col1, col2 = st.columns(2)
+
     with col1:
         if st.button("⬅️ Back", key=f"back_{index}"):
-            if st.session_state.q_index > 1:
+            if st.session_state.q_index > 0:
                 st.session_state.q_index -= 1
                 st.session_state.answers.pop()
                 st.rerun()
+
     with col2:
         if st.button("➡️ Next", key=f"next_{index}"):
-            score = [opt[1] for opt in q["options"] if opt[0] == selected_option][0]
-            st.session_state.answers.append(score)
-            st.session_state.q_index += 1
-            if st.session_state.q_index >= len(questions):
-                st.session_state.completed = True
-            st.rerun()
+            if selected_option == "-- Please select --":
+                st.warning("Please select an option to continue.")
+            else:
+                selected_score = next(score for text, score in q["options"] if text == selected_option)
+                st.session_state.answers.append(selected_score)
+                st.session_state.q_index += 1
+                st.rerun()
 
 
 
