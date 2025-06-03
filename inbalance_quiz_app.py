@@ -1,126 +1,169 @@
 import streamlit as st
 from PIL import Image
 
-st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
-
-# Initialize session state
-if "q" not in st.session_state:
-    st.session_state.q = 0
-if "answers" not in st.session_state:
-    st.session_state.answers = []
-
-# Branding
-st.image("logo.png", width=200)
+# ---------- CONFIGURATION ----------
+st.set_page_config(page_title="InBalance Quiz", layout="centered")
 st.markdown("""
-<h2 style='text-align: center; color: teal;'>InBalance Hormonal Health Quiz</h2>
-<p style='text-align: center;'>Quick check-in to see if your symptoms might signal a hormonal imbalance.</p>
+    <style>
+        .big-question {
+            font-size: 24px !important;
+            font-weight: bold;
+        }
+        .recommend-box {
+            background-color: #f0fdfb;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #d2f4ee;
+        }
+        .diag-box {
+            background-color: #e9f7ef;
+            padding: 18px;
+            border-left: 5px solid teal;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
-# Questions and mapped recommendations
+# ---------- LOGO ----------
+logo = Image.open("logo.png")
+st.image(logo, use_column_width="auto")
+
+st.markdown("<h2 style='text-align:center; color: teal;'>InBalance Hormonal Health Quiz</h2>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Quick check-in to see if your symptoms might signal a hormonal imbalance.</p>", unsafe_allow_html=True)
+
+# ---------- QUESTIONS ----------
 questions = [
     {
-        "text": "How regular was your menstrual cycle in the past year?",
-        "options": {
-            "Does not apply (e.g. pregnant or on hormonal birth control)": None,
-            "Regular (25–35 days)": "✅ Your cycle seems balanced. Keep tracking it for changes.",
-            "Often irregular (<25 or >35 days)": "🔁 Irregular cycles can suggest ovulatory issues or hormonal imbalance.",
-            "Rarely got my period (<6 times/year)": "🚨 Very infrequent periods may signal ovulatory dysfunction or PCOS."
-        }
+        "question": "How regular was your menstrual cycle in the past year?",
+        "options": [
+            "Does not apply (on hormonal treatment or pregnant)",
+            "Regular (25–35 days)",
+            "Often irregular (<25 or >35 days)",
+            "Rarely got my period (<6 times/year)"
+        ]
     },
     {
-        "text": "Have you experienced excessive hair growth (face, chest, back)?",
-        "options": {
-            "No, not at all": None,
-            "Yes, but managed with removal techniques": "🧔‍♀️ Could be a sign of mild androgen excess.",
-            "Yes, and it's hard to control": "⚠️ Persistent hair growth may point to high androgen levels.",
-            "Yes, with scalp hair thinning": "🚩 Body + scalp hair changes may signal deeper hormonal imbalances."
-        }
+        "question": "Have you experienced excessive hair growth (face, chest, back)?",
+        "options": [
+            "No, not at all",
+            "Yes, but managed with removal techniques",
+            "Yes, and it's hard to control",
+            "Yes, plus scalp hair thinning"
+        ]
     },
     {
-        "text": "Have you had acne or oily skin issues recently?",
-        "options": {
-            "No, my skin is clear": None,
-            "Yes, but it’s manageable": "🧴 Mild hormonal acne is common — especially around ovulation.",
-            "Yes, it's often persistent": "⚠️ Chronic acne may reflect elevated androgens or inflammation.",
-            "Yes, severe and resistant to treatment": "🚨 Severe acne is often tied to hormonal or metabolic dysfunction."
-        }
+        "question": "Have you had acne or oily skin issues recently?",
+        "options": [
+            "No",
+            "Sometimes around period",
+            "Yes, it's often persistent",
+            "Yes, severe and cystic"
+        ]
     },
     {
-        "text": "Have you struggled with weight changes?",
-        "options": {
-            "No, stable weight": None,
-            "Some changes but manageable": "📉 Slight weight shifts are normal — keep an eye on trends.",
-            "Struggling to control weight": "⚠️ Could reflect metabolic slowdown or hormone shifts.",
-            "Hard to lose weight despite efforts": "⚖️ Resistance to weight loss may be tied to insulin or cortisol levels."
-        }
+        "question": "Do you feel fatigued, gain weight easily, or crave sugar often?",
+        "options": [
+            "No or rarely",
+            "Occasionally",
+            "Often",
+            "Very frequently"
+        ]
     },
     {
-        "text": "Do you feel unusually tired or sleepy after meals?",
-        "options": {
-            "No, not really": None,
-            "Sometimes after heavy/sugary meals": "🍬 You may be sensitive to sugar spikes — consider tracking your response.",
-            "Often, regardless of meals": "⚠️ Frequent post-meal fatigue might reflect blood sugar or insulin issues.",
-            "Almost daily, hard to stay alert": "🚨 Persistent energy crashes can indicate insulin resistance."
-        }
+        "question": "Have you ever been told you may have PCOS or insulin resistance?",
+        "options": [
+            "No",
+            "Maybe – not confirmed",
+            "Yes – suspected",
+            "Yes – diagnosed"
+        ]
     }
 ]
 
-# Tag keywords for suggested pattern
-diagnosis_keywords = {
-    "Ovulatory Imbalance": ["period", "cycle", "ovulation"],
-    "Androgen-Related": ["hair", "acne", "androgen"],
-    "Metabolic/Insulin-Related": ["weight", "insulin", "fatigue", "sugar"]
-}
+# ---------- RECOMMENDATIONS ----------
+recommendations = [
+    "Irregular or missing periods can be a sign of ovulatory or hormonal imbalance.",
+    "Hair growth and scalp hair loss may point toward elevated androgen levels.",
+    "Persistent acne or oily skin often reflects inflammation or hormonal shifts.",
+    "Fatigue and sugar cravings may suggest blood sugar dysregulation or insulin resistance.",
+    "A past diagnosis or suspicion of PCOS or insulin resistance warrants regular monitoring."
+]
 
-# Ask questions
-q_index = st.session_state.q
-if q_index < len(questions):
-    q = questions[q_index]
-    st.markdown(f"<h4 style='font-size: 22px; font-weight: bold;'>{q['text']}</h4>", unsafe_allow_html=True)
-    selected = st.radio("", list(q["options"].keys()), key=f"q{q_index}")
+# ---------- SESSION SETUP ----------
+if "answers" not in st.session_state:
+    st.session_state.answers = []
+if "step" not in st.session_state:
+    st.session_state.step = 0
+
+# ---------- DISPLAY QUESTIONS ----------
+if st.session_state.step < len(questions):
+    q = questions[st.session_state.step]
+    st.markdown(f"<div class='big-question'>{q['question']}</div>", unsafe_allow_html=True)
+    answer = st.radio("", q["options"], key=f"q{st.session_state.step}")
+
     if st.button("Next"):
-        st.session_state.answers.append((q["options"][selected]))
-        st.session_state.q += 1
+        st.session_state.answers.append(answer)
+        st.session_state.step += 1
         st.rerun()
 
-# Final screen
+# ---------- DISPLAY RESULTS ----------
 else:
-    st.success("✅ All done! Analyzing your answers…")
+    answers = st.session_state.answers
 
-    # Show final diagnosis result
-    st.markdown(f"""
-    <h3 style='color: teal; margin-top: 20px;'>🧬 Result: {diagnosis}</h3>
-    """, unsafe_allow_html=True)
+    # ----- Score-based Diagnosis -----
+    score = 0
+    weights = [0, 1, 2, 3]  # For 4-option questions
+    for ans_idx, ans in enumerate(answers):
+        score += weights[questions[ans_idx]["options"].index(ans)]
 
-    # Generate a personalized summary paragraph (based on feedback messages from answers)
-    feedback_lines = [f for f in st.session_state.answers if f]
-    
-    if not feedback_lines:
-        personalized_summary = (
-            "Your answers don’t show strong signs of hormonal imbalance. "
-            "That’s great — but it’s still important to stay in tune with your cycle."
-        )
+    if score >= 11:
+        diagnosis = "HCA-PCO (Possible PCOS)"
+    elif score >= 8:
+        diagnosis = "H-PCO (Androgen + Metabolic)"
+    elif score >= 5:
+        diagnosis = "H-IR (Insulin-Resistant Type)"
     else:
-        personalized_summary = " ".join(feedback_lines)
+        diagnosis = "No strong hormonal patterns detected"
 
-    st.markdown(f"""
-    <div style='padding: 20px; background-color: #f1fcf9; border-radius: 10px; font-size: 16px; line-height: 1.6'>
-        💡 <strong>Your personalized insight:</strong><br><br>
-        {personalized_summary}
-    </div>
+    st.markdown(f"<div class='diag-box'><h4>🧬 Result: {diagnosis}</h4></div>", unsafe_allow_html=True)
+
+    # ----- Personalized Recommendation Summary -----
+    st.success("Here's your personalized feedback:")
+
+    recs = []
+    for i, ans in enumerate(answers):
+        if i == 0 and "irregular" in ans.lower():
+            recs.append(recommendations[0])
+        if i == 1 and "yes" in ans.lower():
+            recs.append(recommendations[1])
+        if i == 2 and ("persistent" in ans.lower() or "severe" in ans.lower()):
+            recs.append(recommendations[2])
+        if i == 3 and ("often" in ans.lower() or "very" in ans.lower()):
+            recs.append(recommendations[3])
+        if i == 4 and ("yes" in ans.lower()):
+            recs.append(recommendations[4])
+
+    if recs:
+        st.markdown(f"<div class='recommend-box'><ul>" + "".join([f"<li>{r}</li>" for r in recs]) + "</ul></div>", unsafe_allow_html=True)
+    else:
+        st.info("Your symptoms seem minimal — keep tracking to stay in tune with your cycle.")
+
+    # ----- InBalance Support -----
+    st.markdown("""
+        <div class='recommend-box'>
+            <h5>💡 How InBalance Can Help</h5>
+            InBalance helps you track your symptoms, cycle patterns, skin/hair changes, fatigue, and weight — so our team of experts can guide you toward better hormonal balance.<br><br>
+            Whether you need to confirm a diagnosis, adjust your diet, or optimize workouts, we’ve got you covered.
+        </div>
     """, unsafe_allow_html=True)
 
-    # How InBalance Can Help (static content)
-    st.markdown(f"""
-    <div style='padding: 20px; background-color: #e8f6f6; border-radius: 10px; margin-top: 20px;'>
-        <h4 style='color: teal;'>How InBalance Can Help</h4>
-        <p>InBalance helps you monitor symptoms like acne, fatigue, irregular cycles or sugar crashes — and understand how they connect to your hormones.</p>
-        <p>Our team of experts helps you move from confusion to clarity with cycle-synced nutrition, lifestyle and fitness tracking.</p>
-        <p>You deserve personalized care — and we’re here for it.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # QR Code
+    qr_code = Image.open("qr_code.png")
+    st.image(qr_code, width=180)
 
-    # QR code and restart
-    st.image("qr_code.png", width=300)
-    st.markdown("<p style='text-align: center;'>Scan to follow us or get early access 💙</p>", unsafe_allow_html=True)
-    st.button("🔁 Start Over", on_click=lambda: st.session_state.clear())
+    # Restart
+    if st.button("🔁 Start Over"):
+        st.session_state.answers = []
+        st.session_state.step = 0
+        st.rerun()
