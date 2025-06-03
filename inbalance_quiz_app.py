@@ -14,7 +14,7 @@ st.markdown("""
         .main {background-color: #ffffff;}
         h1 {color: #007C91;}
         .big-qr img {max-width: 200px !important;}
-        .logo-center img {max-width: 150px !important;}
+        .logo-center img {max-width: 100px !important;}
         .question {font-size: 18px; font-weight: bold;}
         .option {font-size: 16px;}
         .result-title {font-size: 24px; font-weight: 700; color: #007C91;}
