@@ -4,6 +4,26 @@ import re
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
+import gspread
+import json
+from oauth2client.service_account import ServiceAccountCredentials
+
+
+
+def send_to_gsheet(row_data):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds_dict = json.loads(st.secrets["gcp_service_account"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+
+    # Open by URL or name
+    sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE")
+    worksheet = sheet.sheet1
+
+    worksheet.append_row(row_data)
+
+
+
 
 # -------------------- CONFIG --------------------
 st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
@@ -247,3 +267,13 @@ else:
             st.text(str(e))
 
     st.button("Restart Quiz", on_click=lambda: st.session_state.clear())
+
+row = [
+    st.session_state.name,
+    st.session_state.email,
+    diagnosis,
+    total,
+    ", ".join(str(score) for score in st.session_state.answers)
+]
+send_to_gsheet(row)
+
