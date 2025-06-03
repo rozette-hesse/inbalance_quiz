@@ -3,17 +3,17 @@ from PIL import Image
 
 st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
 
-# State initialization
+# Initialize session state
 if "q" not in st.session_state:
     st.session_state.q = 0
 if "answers" not in st.session_state:
     st.session_state.answers = []
 
-# Logo and title
-st.image("logo.png", width=140)
+# Branding
+st.image("logo.png", width=200)
 st.markdown("""
 <h2 style='text-align: center; color: teal;'>InBalance Hormonal Health Quiz</h2>
-<p style='text-align: center;'>Explore signs of hormonal imbalance — and how InBalance can help.</p>
+<p style='text-align: center;'>Quick check-in to see if your symptoms might signal a hormonal imbalance.</p>
 """, unsafe_allow_html=True)
 
 # Questions and mapped recommendations
@@ -58,70 +58,68 @@ questions = [
         "text": "Do you feel unusually tired or sleepy after meals?",
         "options": {
             "No, not really": None,
-            "Sometimes after heavy/sugary meals": "🍬 You may be sensitive to sugar spikes — track patterns.",
+            "Sometimes after heavy/sugary meals": "🍬 You may be sensitive to sugar spikes — consider tracking your response.",
             "Often, regardless of meals": "⚠️ Frequent post-meal fatigue might reflect blood sugar or insulin issues.",
             "Almost daily, hard to stay alert": "🚨 Persistent energy crashes can indicate insulin resistance."
         }
     }
 ]
 
-# Simple keyword tagging to define "diagnosis type"
+# Tag keywords for suggested pattern
 diagnosis_keywords = {
     "Ovulatory Imbalance": ["period", "cycle", "ovulation"],
     "Androgen-Related": ["hair", "acne", "androgen"],
     "Metabolic/Insulin-Related": ["weight", "insulin", "fatigue", "sugar"]
 }
 
-# Show questions
+# Ask questions
 q_index = st.session_state.q
 if q_index < len(questions):
     q = questions[q_index]
-    selected = st.radio(q["text"], list(q["options"].keys()), key=f"q{q_index}")
+    st.markdown(f"<h4 style='font-size: 22px; font-weight: bold;'>{q['text']}</h4>", unsafe_allow_html=True)
+    selected = st.radio("", list(q["options"].keys()), key=f"q{q_index}")
     if st.button("Next"):
-        st.session_state.answers.append((q["text"], selected, q["options"][selected]))
+        st.session_state.answers.append((q["options"][selected]))
         st.session_state.q += 1
         st.rerun()
 
-# Results screen
+# Final screen
 else:
-    st.success("✅ Here's your personalized feedback:")
+    st.success("✅ You're done! Here's what your responses suggest:")
 
     tag_collector = []
-    for i, (q_text, choice, feedback) in enumerate(st.session_state.answers):
-        st.markdown(f"**Q{i+1}: {q_text}**")
-        st.markdown(f"**Your answer:** {choice}")
+    for i, feedback in enumerate(st.session_state.answers):
         if feedback:
-            st.markdown(f"🔎 *{feedback}*")
+            st.markdown(f"{feedback}")
             tag_collector.append(feedback.lower())
-        st.markdown("---")
+    st.markdown("---")
 
-    # Determine diagnosis type
+    # Simple pattern tag
     summary = "No major imbalance detected."
-    for dtype, tags in diagnosis_keywords.items():
-        if any(tag in " ".join(tag_collector) for tag in tags):
-            summary = dtype
+    for tag, keys in diagnosis_keywords.items():
+        if any(k in " ".join(tag_collector) for k in keys):
+            summary = tag
             break
 
     st.markdown(f"""
     <div style='padding: 20px; background-color: #f1fcf9; border-radius: 10px; margin-top: 20px;'>
-        <h4 style='color: teal;'>🧠 Likely Hormonal Pattern: <u>{summary}</u></h4>
-        <p>This is a general pattern based on your answers. It’s not a diagnosis, but a helpful guide for what to explore next.</p>
+        <h4 style='color: teal;'>🧠 Hormonal Pattern Likely: <u>{summary}</u></h4>
+        <p>This is a simplified health pattern based on your answers — not a diagnosis, but a guide to explore further.</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # InBalance Help Section
+    # How InBalance helps
     st.markdown("""
     <div style='margin-top: 30px; padding: 20px; background-color: #e8f6f6; border-radius: 10px;'>
         <h4 style='color: teal;'>💡 How InBalance Can Help</h4>
-        <p>InBalance helps you track symptoms, skin/hair changes, cycle data, fatigue, and weight — all in one app.</p>
-        <p>Whether you're trying to understand your symptoms, get a diagnosis, or find expert-backed plans, InBalance guides you every day with personalized insights.</p>
-        <p>We're your hormonal health companion.</p>
+        <p>InBalance helps you monitor your cycle, symptoms, skin/hair changes, energy and more. We sync this with your cycle phase — giving you clear, daily recommendations.</p>
+        <p>Our team of experts can guide you from diagnosis to treatment through the app. Whether it’s PCOS, fatigue, or just cycle confusion — we’re your personalized companion.</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # QR Code to Linktree
-    st.image("qr_code.png", width=400)
-    st.markdown("<p style='text-align: center;'>Scan to follow or join our waitlist 💙</p>", unsafe_allow_html=True)
+    # QR code
+    st.image("qr_code.png", width=300)
+    st.markdown("<p style='text-align: center;'>Scan to follow us or join the app waitlist 💙</p>", unsafe_allow_html=True)
 
-    # Restart
+    # Restart button
     st.button("🔁 Start Over", on_click=lambda: st.session_state.clear())
