@@ -1,133 +1,132 @@
 import streamlit as st
 from PIL import Image
 
-# --------------------- PAGE CONFIG ---------------------
+# Must be first
 st.set_page_config(page_title="InBalance Quiz", layout="centered")
 
-# --------------------- LOAD IMAGES ---------------------
+# Load images (make sure these are in your GitHub repo)
 logo = Image.open("logo.png")
 qr_code = Image.open("qr_code.png")
 
-# --------------------- HEADER ---------------------
-st.markdown(
-    """
-    <div style='text-align: center;'>
-        <img src='https://raw.githubusercontent.com/rozettesheh/inbalance_quiz/main/Logo-X-2024-01.png' width='160'/>
-        <h1 style='color: #008080; font-size: 2.5em;'>InBalance Hormonal Health Quiz</h1>
-        <p style='font-size: 1.1em;'>Take a 1-minute check for <strong>hormonal imbalance</strong>, <strong>PCOS</strong> or <strong>insulin resistance</strong>.</p>
-    </div>
-    """, unsafe_allow_html=True
-)
+# ---------- HEADER SECTION ----------
+st.image(logo, width=240)
+st.markdown("""
+    <h1 style='text-align: center; color: #007C80;'>InBalance Hormonal Health Quiz</h1>
+    <p style='text-align: center; font-size: 1.2em;'>
+    Take a 1-minute check for <b>hormonal imbalance</b>, <b>PCOS</b>, or <b>insulin resistance</b>.
+    </p>
+""", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# --------------------- QUESTIONS ---------------------
+# ---------- QUESTION SET ----------
 questions = [
     {
-        "question": "🩸 How regular was your menstrual cycle in the past year?",
+        "question": "How regular was your menstrual cycle in the past year?",
         "options": [
-            ("Does not apply (e.g. on hormonal treatment or pregnant)", 0),
+            ("Does not apply (on hormonal treatment or pregnant)", 0),
             ("Regular (25–35 days)", 1),
             ("Often irregular (<25 or >35 days)", 6),
             ("Rarely got my period (<6 times/year)", 8),
         ],
-        "weight": 4,
-        "key": "q1"
+        "weight": 4
     },
     {
-        "question": "🧔 Do you notice excessive thick black hair on face, chest, or back?",
+        "question": "Do you notice excessive thick black hair growth on your face, chest, or back?",
         "options": [
             ("No, not at all", 1),
-            ("Yes, manageable with hair removal", 5),
-            ("Yes, severe and hard to remove", 7),
-            ("Yes, and also have scalp hair thinning/loss", 8),
+            ("Yes, noticeable but well-controlled with hair removal", 5),
+            ("Yes, major issue, resistant to hair removal", 7),
+            ("Yes, plus scalp thinning/hair-loss", 8),
         ],
-        "weight": 3,
-        "key": "q2"
+        "weight": 3
     },
     {
-        "question": "😵‍💫 Have you had acne or oily skin in the past year?",
+        "question": "Have you had issues with acne or oily skin in the past year?",
         "options": [
-            ("No skin issues", 1),
-            ("Mild, controlled with treatment", 4),
-            ("Frequent despite treatment", 6),
-            ("Severe and persistent", 8),
+            ("No skin troubles", 1),
+            ("Yes, controlled with treatments", 4),
+            ("Yes, often despite treatments", 6),
+            ("Yes, severe and resistant", 8),
         ],
-        "weight": 2.5,
-        "key": "q3"
+        "weight": 2.5
     },
     {
-        "question": "⚖️ Have you had weight changes in the past year?",
+        "question": "Have you experienced weight changes in the past year?",
         "options": [
             ("Weight is stable", 1),
-            ("Stable with mindful eating/exercise", 2),
-            ("Hard to control without effort", 5),
-            ("Struggling despite healthy lifestyle", 7),
+            ("Stable with effort", 2),
+            ("Struggling to control weight", 5),
+            ("Can't lose weight despite effort", 7),
         ],
-        "weight": 2,
-        "key": "q4"
+        "weight": 2
     },
     {
-        "question": "😴 Do you feel tired/sleepy after meals?",
+        "question": "Do you feel excessively tired or sleepy after meals?",
         "options": [
             ("No, not really", 1),
-            ("Sometimes after heavy/sugary meals", 2),
-            ("Yes, often", 4),
+            ("Sometimes after heavy meals", 2),
+            ("Yes, often regardless of food", 4),
             ("Yes, almost daily", 6),
         ],
-        "weight": 1,
-        "key": "q5"
-    },
+        "weight": 1
+    }
 ]
 
-# --------------------- SESSION INIT ---------------------
+# Session state to track progress
 if "q" not in st.session_state:
     st.session_state.q = 0
     st.session_state.answers = []
 
-# --------------------- QUIZ FLOW ---------------------
+# ---------- QUIZ FLOW ----------
 if st.session_state.q < len(questions):
-    q = questions[st.session_state.q]
-    st.markdown(f"### {q['question']}")
-    selected = st.radio("", [opt[0] for opt in q["options"]], key=q["key"])
+    q_data = questions[st.session_state.q]
+    st.subheader(q_data["question"])
+    selected = st.radio("", [opt[0] for opt in q_data["options"]])
+    
     if st.button("Next"):
-        score = dict(q["options"])[selected]
-        st.session_state.answers.append((score, q["weight"]))
+        # Save the numeric value
+        for opt_text, opt_value in q_data["options"]:
+            if opt_text == selected:
+                st.session_state.answers.append(opt_value)
         st.session_state.q += 1
         st.rerun()
 
+# ---------- RESULTS ----------
 else:
-    # --------------------- CALCULATE SCORES ---------------------
     st.success("✅ All done! Analyzing your answers…")
-    q1_score = st.session_state.answers[0][0] * 4
-    q2_score = st.session_state.answers[1][0] * 4
-    q3_score = st.session_state.answers[2][0] * 3
-    q4_score = st.session_state.answers[3][0] * 2
-    q5_score = st.session_state.answers[4][0] * 1
 
-    CA = q1_score
-    HYPRA = q2_score + q3_score
-    PCOMIR = q4_score + q5_score
+    # Get total cluster scores
+    scores = st.session_state.answers
+    CA = scores[0] * questions[0]["weight"]
+    HYPRA = scores[1] * 4 + scores[2] * 3
+    PCOMIR = scores[3] * 2 + scores[4] * 1
 
+    # Determine phenotype
     if CA >= 20 and HYPRA >= 20 and PCOMIR >= 10:
-        result = "HCA-PCO (Possible PCOS)"
+        result = "HCA-PCO (All 3: Ovulation, Androgen, Metabolic)"
     elif CA >= 20 and HYPRA >= 20:
-        result = "H-CA (Anovulation + Hyperandrogenism)"
+        result = "H-CA (Ovulation + Androgen)"
     elif HYPRA >= 20 and PCOMIR >= 10:
         result = "H-PCO (Androgen + Metabolic)"
     elif CA >= 20 and PCOMIR >= 10:
-        result = "PCO-CA (Cycle + Metabolic)"
+        result = "PCO-CA (Ovulation + Metabolic)"
     else:
         result = "No strong hormonal patterns detected."
 
-    st.markdown(f"<h3 style='color: teal;'>🧬 Result: {result}</h3>", unsafe_allow_html=True)
+    # Show result
+    st.markdown(f"""
+    ### 🧬 <span style='color:#007C80'>**Result: {result}**</span>
+    """, unsafe_allow_html=True)
 
-    # --------------------- CALL TO ACTION ---------------------
+    # CTA + QR
     st.markdown("---")
     st.markdown("### 💡 Want expert tracking & care?")
     st.markdown("👉 [Join the waitlist here](https://linktr.ee/Inbalance.ai)")
-    st.image(qr_code, width=160)
 
+    st.image(qr_code, width=200)
+
+    # Reset option
     if st.button("🔁 Start Over"):
         st.session_state.q = 0
         st.session_state.answers = []
