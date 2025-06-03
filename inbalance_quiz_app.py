@@ -17,18 +17,31 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------------------- USER INFO ----------------------
-if "started" not in st.session_state:
-    st.session_state.started = False
+import re
 
-if not st.session_state.started:
-    name = st.text_input("Your Name")
-    email = st.text_input("Email")
-    if name and email:
-        if st.button("Start Quiz"):
-            st.session_state.started = True
-            st.session_state.answers = []
-            st.session_state.q_index = 0
+# ---------------------- NAME + EMAIL ----------------------
+if "name" not in st.session_state:
+    st.session_state.name = ""
+if "email" not in st.session_state:
+    st.session_state.email = ""
+
+if st.session_state.q_index == 0 and not st.session_state.completed:
+    st.markdown("### 👋 Let's start by getting to know you a little")
+    st.session_state.name = st.text_input("What's your first name?")
+    st.session_state.email = st.text_input("Enter your email address")
+
+    # Email validation using regex
+    def is_valid_email(email):
+        return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+
+    if st.button("Start Quiz"):
+        if not st.session_state.name.strip():
+            st.warning("Please enter your name to continue.")
+        elif not is_valid_email(st.session_state.email):
+            st.warning("Please enter a valid email address.")
+        else:
+            st.session_state.q_index = 1
+            st.rerun()
     st.stop()
 
 # ---------------------- QUIZ QUESTIONS ----------------------
