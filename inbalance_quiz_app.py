@@ -13,7 +13,7 @@ st.markdown("""
     <style>
         .main {background-color: #ffffff;}
         h1 {color: #007C91;}
-        .big-qr img {max-width: 150px !important;}
+        .big-qr img {max-width: 200px !important;}
         .logo-center img {max-width: 150px !important;}
         .question {font-size: 18px; font-weight: bold;}
         .option {font-size: 16px;}
