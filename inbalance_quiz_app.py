@@ -163,12 +163,21 @@ if st.session_state.completed:
 
         if st.button("Finish & Save"):
             try:
-                if sheet:
-                    row = [st.session_state.name, st.session_state.email, diagnosis, total, tracking, ", ".join(symptoms), goal, notes]
-                    sheet.append_row(row)
-                    st.success("✅ You're on the waitlist! We'll be in touch.")
-                    st.session_state.extra_questions_done = True
-            except:
-                st.error("Could not save your data. Please check Google Sheet setup.")
+             if sheet:
+                 try:
+                     row = [
+                         st.session_state.name,
+                         st.session_state.email,
+                         st.session_state.phone,
+                         *st.session_state.answers,
+                         diagnosis,
+                         total_score
+                     ]
+                     sheet.append_row(row)
+                     st.success("✅ Your responses have been saved successfully.")
+                 except Exception as e:
+                     st.error(f"An error occurred while saving your data: {e}")
+   
+
 
     st.button("Restart Quiz", on_click=lambda: st.session_state.clear())
