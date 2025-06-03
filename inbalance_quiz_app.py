@@ -186,8 +186,8 @@ if st.session_state.completed:
                     st.error(f"❌ Could not save to Google Sheets: {e}")
 
 # Restart button
-if st.button("🔄 Restart Quiz"):
-    st.session_state.clear()
-    st.rerun()
+    if st.button("🔄 Restart Quiz"):
+        st.session_state.clear()
+        st.rerun()
 
 
