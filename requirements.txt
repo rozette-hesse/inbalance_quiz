@@ -3,3 +3,5 @@ uvicorn
 streamlit
 openai
 Pillow
+gspread
+oauth2client
