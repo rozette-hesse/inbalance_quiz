@@ -167,28 +167,27 @@ if st.session_state.completed:
         notes = st.text_area("Anything else you'd like us to know?")
 
         if st.button("Finish & Save"):
-            try:
-             # Save data to Google Sheets (wrap in try-except)
-if sheet:
-    try:
-        sheet.append_row([
-            st.session_state.name,
-            st.session_state.email,
-            st.session_state.phone,
-            *st.session_state.answers,
-            st.session_state.get("diagnosis", ""),
-            st.session_state.get("total_score", ""),
-            st.session_state.get("cycle_tracking", ""),
-            ", ".join(st.session_state.get("symptoms", [])),
-            st.session_state.get("goal", ""),
-            st.session_state.get("note", "")
-        ])
-        st.success("✅ Your responses were saved successfully!")
-    except Exception as e:
-        st.error(f"❌ Could not save to Google Sheets: {e}")
+            if sheet:
+                try:
+                    sheet.append_row([
+                        st.session_state.name,
+                        st.session_state.email,
+                        st.session_state.phone,
+                        *st.session_state.answers,
+                        st.session_state.get("diagnosis", ""),
+                        st.session_state.get("total_score", ""),
+                        st.session_state.get("cycle_tracking", ""),
+                        ", ".join(st.session_state.get("symptoms", [])),
+                        st.session_state.get("goal", ""),
+                        st.session_state.get("note", "")
+                    ])
+                    st.success("✅ Your responses were saved successfully!")
+                except Exception as e:
+                    st.error(f"❌ Could not save to Google Sheets: {e}")
 
-# Add restart button safely OUTSIDE the try/except
+# Restart button
 if st.button("🔄 Restart Quiz"):
     st.session_state.clear()
     st.rerun()
+
 
