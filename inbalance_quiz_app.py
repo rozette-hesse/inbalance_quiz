@@ -49,7 +49,7 @@ if st.session_state.step == 0:
             st.session_state.name = name
             st.session_state.email = email
             st.session_state.step = 1
-            st.experimental_rerun()
+            st.rerun()
 
 
 
@@ -110,7 +110,7 @@ if 1 <= st.session_state.step <= len(questions):
         value = next(score for text, score in questions[idx]["options"] if text == choice)
         st.session_state.answers.append(value)
         st.session_state.step += 1
-        st.experimental_rerun()
+        st.rerun()
 
 
 if st.session_state.step > len(questions):
@@ -157,4 +157,4 @@ if st.session_state.step > len(questions):
 
     if st.button("Restart"):
         st.session_state.clear()
-        st.experimental_rerun()
+        st.rerun()
