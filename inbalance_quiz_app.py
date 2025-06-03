@@ -1,161 +1,149 @@
 import streamlit as st
+import time
 from PIL import Image
 
-# Page setup (must be first!)
-st.set_page_config(page_title="InBalance Quiz", layout="centered")
+# -------------------- CONFIG --------------------
+st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
 
-# Load images
-logo = Image.open("logo.png")
-qr = Image.open("qr_code.png")
-
-# Style tweaks
-st.markdown("""
-    <style>
-        .main {background-color: #ffffff;}
-        h1 {color: #007C91;}
-        .big-qr img {max-width: 200px !important;}
-        .logo-center img {max-width: 100px !important;}
-        .question {font-size: 18px; font-weight: bold;}
-        .option {font-size: 16px;}
-        .result-title {font-size: 24px; font-weight: 700; color: #007C91;}
-        .footer {margin-top: 40px;}
-    </style>
-""", unsafe_allow_html=True)
-
-# Header
-st.markdown('<div class="logo-center">', unsafe_allow_html=True)
-st.image(logo)
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.title("InBalance Hormonal Health Quiz")
-st.markdown("Take a 1-minute check for **hormonal imbalance, PCOS**, or **insulin resistance.**")
-
-# Initialize session state
+# -------------------- SESSION STATE --------------------
 if "q" not in st.session_state:
     st.session_state.q = 0
+if "answers" not in st.session_state:
     st.session_state.answers = []
+if "transition" not in st.session_state:
+    st.session_state.transition = False
 
-# Questions and Weights
+# -------------------- IMAGES --------------------
+st.image("logo.png", width=180)
+
+st.markdown("""
+    <h2 style='text-align: center; color: teal;'>InBalance Hormonal Health Quiz</h2>
+    <p style='text-align: center;'>Take a quick check for <b>hormonal imbalance</b>, <b>PCOS</b>, or <b>insulin resistance</b>. Takes 1 minute.</p>
+""", unsafe_allow_html=True)
+
+# -------------------- QUESTIONS --------------------
 questions = [
     {
-        "q": "How regular was your menstrual cycle in the past year?",
+        "text": "How regular was your menstrual cycle in the past year?",
         "options": [
-            "Does not apply (on hormonal treatment or pregnant)",
-            "Regular (25–35 days)",
-            "Often irregular (<25 or >35 days)",
-            "Rarely got my period (<6 times/year)"
+            "Does not apply (on hormonal treatment or pregnant)",  # 0
+            "Regular (25–35 days)",                                # 1
+            "Often irregular (<25 or >35 days)",                   # 6
+            "Rarely got my period (<6 times/year)"                # 8
         ],
         "weights": [0, 1, 6, 8],
-        "cluster": "CA",
-        "multiplier": 4
+        "cluster": "CA"
     },
     {
-        "q": "Do you notice excessive thick hair growth (face, chest, back)?",
+        "text": "Have you experienced excessive hair growth (face, chest, back)?",
         "options": [
-            "No, not at all.",
-            "Yes, it's noticeable and managed with hair removal.",
-            "Yes, it's resistant to treatment.",
-            "Yes, and I also have scalp hair thinning/loss."
+            "No, not at all",                                     # 1
+            "Yes, but managed with removal techniques",           # 5
+            "Yes, and it's hard to control",                      # 7
+            "Yes, plus scalp hair thinning"                       # 8
         ],
         "weights": [1, 5, 7, 8],
-        "cluster": "HYPRA",
-        "multiplier": 4
+        "cluster": "HYPRA"
     },
     {
-        "q": "Have you had issues with acne or oily skin?",
+        "text": "Have you had acne or oily skin issues recently?",
         "options": [
-            "No issues at all.",
-            "Yes, but well-controlled.",
-            "Yes, often despite treatment.",
-            "Yes, severe and persistent."
+            "No, my skin is clear",                               # 1
+            "Yes, but it’s manageable",                           # 4
+            "Yes, it's often persistent",                         # 6
+            "Yes, severe and resistant to treatment"              # 8
         ],
         "weights": [1, 4, 6, 8],
-        "cluster": "HYPRA",
-        "multiplier": 3
+        "cluster": "HYPRA"
     },
     {
-        "q": "Have you experienced weight changes?",
+        "text": "Have you struggled with weight changes?",
         "options": [
-            "No, stable weight.",
-            "Stable with effort.",
-            "Struggling despite no change in diet.",
-            "Struggling despite diet and exercise."
+            "No, stable weight",                                  # 1
+            "Some changes but manageable",                        # 2
+            "Struggling to control weight",                       # 5
+            "Hard to lose weight despite efforts"                 # 7
         ],
         "weights": [1, 2, 5, 7],
-        "cluster": "PCOMIR",
-        "multiplier": 2
+        "cluster": "PCOMIR"
     },
     {
-        "q": "Do you feel tired or sleepy after meals?",
+        "text": "Do you feel unusually tired or sleepy after meals?",
         "options": [
-            "No, not really.",
-            "Sometimes, after sugary meals.",
-            "Often, regardless of food.",
-            "Almost daily fatigue after eating."
+            "No, not really",                                     # 1
+            "Sometimes after heavy/sugary meals",                 # 2
+            "Often, regardless of meals",                         # 4
+            "Almost daily, hard to stay alert"                    # 6
         ],
         "weights": [1, 2, 4, 6],
-        "cluster": "PCOMIR",
-        "multiplier": 1
+        "cluster": "PCOMIR"
     }
 ]
 
-# Store clusters
-cluster_scores = {"CA": 0, "HYPRA": 0, "PCOMIR": 0}
+# -------------------- TRANSITION --------------------
+if st.session_state.transition:
+    st.info("Loading next question...")
+    time.sleep(1)
+    st.session_state.transition = False
+    st.session_state.q += 1
 
-# Display current question
-if st.session_state.q < len(questions):
-    q = questions[st.session_state.q]
-    st.markdown(f"<div class='question'>{q['q']}</div>", unsafe_allow_html=True)
-    selected = st.radio(" ", q["options"], key=f"q{st.session_state.q}")
-    
+# -------------------- QUIZ FLOW --------------------
+q_index = st.session_state.q
+total_q = len(questions)
+
+if q_index < total_q:
+    q = questions[q_index]
+    st.markdown(f"**Step {q_index + 1} of {total_q}**")
+    user_ans = st.radio(q["text"], q["options"], key=q_index)
+
     if st.button("Next"):
-        idx = q["options"].index(selected)
-        score = q["weights"][idx] * q["multiplier"]
-        cluster_scores[q["cluster"]] += score
-        st.session_state.answers.append(idx)
-        st.session_state.q += 1
+        st.session_state.answers.append({
+            "cluster": q["cluster"],
+            "weight": q["weights"][q["options"].index(user_ans)]
+        })
+        st.session_state.transition = True
         st.rerun()
-else:
-    # Diagnosis logic
-    CA = cluster_scores["CA"]
-    HYPRA = cluster_scores["HYPRA"]
-    PCOMIR = cluster_scores["PCOMIR"]
 
+# -------------------- SCORING --------------------
+else:
+    st.success("✅ All done! Analyzing your answers...\n")
+
+    CA = sum(a["weight"] for a in st.session_state.answers if a["cluster"] == "CA") * 4
+    HYPRA = sum(a["weight"] for a in st.session_state.answers if a["cluster"] == "HYPRA")
+    HYPRA = HYPRA * 1.5  # Adjusting overall weight to reflect importance
+    PCOMIR = sum(a["weight"] for a in st.session_state.answers if a["cluster"] == "PCOMIR")
+
+    # Diagnosis logic
     if CA >= 20 and HYPRA >= 20 and PCOMIR >= 10:
-        result = "HCA-PCO (Likely PCOS)"
-        msg = "You show signs of chronic anovulation, androgen excess, and insulin resistance. InBalance can help you monitor and treat all three."
+        result = "HCA-PCO (Classic PCOS)"
+        explanation = "You show signs of ovulation issues, elevated androgens, and possible insulin resistance — a classic PCOS profile. We recommend getting expert evaluation."
     elif CA >= 20 and HYPRA >= 20:
-        result = "H-CA (Hormonal + Irregular Cycles)"
-        msg = "Signs of ovulatory dysfunction and hormonal imbalance. InBalance supports tracking symptoms and personalizing care."
+        result = "H-CA (Androgenic + Ovulatory)"
+        explanation = "You may be experiencing both androgenic symptoms and menstrual irregularities. This may indicate PCOS or similar hormonal imbalance."
     elif HYPRA >= 20 and PCOMIR >= 10:
         result = "H-PCO (Androgen + Metabolic)"
-        msg = "You may be dealing with metabolic issues and androgen symptoms. InBalance can help you manage your symptoms and optimize hormones."
+        explanation = "Your signs suggest androgen elevation and insulin resistance. This could reflect a metabolic form of PCOS or other endocrine disorder."
     elif CA >= 20 and PCOMIR >= 10:
-        result = "PCO-CA (Irregular Cycles + Metabolic)"
-        msg = "Cycle issues combined with metabolic strain. InBalance tracks both for better cycle control."
-    elif CA >= 20:
-        result = "Phenotype D (Irregular Cycles)"
-        msg = "You show signs of cycle irregularity. Tracking with InBalance helps clarify patterns and guide care."
-    elif HYPRA >= 20:
-        result = "Phenotype C (Hormonal Imbalance)"
-        msg = "Signs of elevated androgens like acne or excess hair. InBalance can help reduce and track flare-ups."
-    elif PCOMIR >= 10:
-        result = "Possible Insulin Resistance"
-        msg = "You may be experiencing signs of insulin resistance. InBalance can help detect and manage these shifts."
+        result = "PCO-CA (Ovulatory + Metabolic)"
+        explanation = "Your symptoms show ovulation issues and metabolic imbalance. You may benefit from cycle and lifestyle tracking."
     else:
-        result = "No strong hormonal patterns detected."
-        msg = "Your symptoms don't suggest a clear hormonal imbalance. Use InBalance to continue tracking and catch early signs."
+        result = "No strong hormonal patterns detected"
+        explanation = "Your answers don’t show strong signs of PCOS or major hormonal dysfunction. That’s great — but keep monitoring your cycle."
 
-    st.success("✅ All done! Analyzing your answers…")
-    st.markdown(f"<div class='result-title'>🧬 Result: {result}</div>", unsafe_allow_html=True)
-    st.write(msg)
+    st.markdown(f"### 🧬 Result: **{result}**")
+    st.markdown(f"**{explanation}**")
 
-    # Call to action
-    st.markdown("---")
-    st.markdown("💡 **Want expert tracking & care?**")
-    st.image(qr, caption="Scan to start with InBalance", width=200)
+    # -------------------- INBALANCE RECOMMENDATION --------------------
+    st.markdown("""
+    <div style='margin-top: 30px; padding: 20px; background-color: #e6f2f2; border-radius: 10px;'>
+        <h4 style='color: teal;'>💡 How InBalance Can Help</h4>
+        <p>InBalance helps you track your symptoms, cycle patterns, skin/hair changes, fatigue and weight — so our team of experts can guide you toward better hormonal balance.</p>
+        <p>Whether you need to confirm a diagnosis, adjust your diet, or optimize workouts, we’ve got you covered.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    if st.button("🔄 Start Over"):
-        st.session_state.q = 0
-        st.session_state.answers = []
-        st.rerun()
+    # -------------------- QR CODE --------------------
+    st.image("qr_code.png", width=200, caption="Scan to learn more", use_column_width=False)
+
+    # -------------------- RESTART --------------------
+    st.button("🔁 Start Over", on_click=lambda: st.session_state.clear())
