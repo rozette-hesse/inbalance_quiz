@@ -26,15 +26,66 @@ for key, val in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
-# ----------------- GOOGLE SHEETS SETUP -----------------
+# ----------------- GOOGLE SHEETS -----------------
 try:
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    scope = ["https://spreadsheets.google.com/feeds",
+             "https://www.googleapis.com/auth/spreadsheets",
+             "https://www.googleapis.com/auth/drive"]
     credentials_dict = st.secrets["gcp_service_account"]
     credentials = Credentials.from_service_account_info(credentials_dict, scopes=scope)
     client = gspread.authorize(credentials)
     sheet = client.open("InBalance_Quiz_Responses").sheet1
 except Exception:
     sheet = None
+
+# ----------------- QUIZ QUESTIONS -----------------
+questions = [
+    {
+        "q": "How regular was your menstrual cycle in the past year?",
+        "options": [
+            "Does not apply (e.g., hormonal treatment or pregnancy)",
+            "Regular (25–35 days)",
+            "Often irregular (< 25 or > 35 days)",
+            "Rarely got period (< 6 times a year)"
+        ]
+    },
+    {
+        "q": "Do you notice excessive thick black hair on your face, chest, or back?",
+        "options": [
+            "No, not at all",
+            "Yes, manageable with hair removal",
+            "Yes, resistant to hair removal",
+            "Yes + scalp thinning or hair loss"
+        ]
+    },
+    {
+        "q": "Have you had acne or oily skin this year?",
+        "options": [
+            "No",
+            "Yes, mild but manageable",
+            "Yes, often despite treatment",
+            "Yes, severe and persistent"
+        ]
+    },
+    {
+        "q": "Have you experienced weight changes?",
+        "options": [
+            "No, stable weight",
+            "Stable only with effort",
+            "Struggling to maintain weight",
+            "Can't lose weight despite diet/exercise"
+        ]
+    },
+    {
+        "q": "Do you feel tired or sleepy after meals?",
+        "options": [
+            "No, not really",
+            "Sometimes after heavy meals",
+            "Yes, often regardless of food",
+            "Yes, almost daily with alertness issues"
+        ]
+    },
+]
 
 # ----------------- START SCREEN -----------------
 if st.session_state.q_index == 0 and not st.session_state.completed:
@@ -58,61 +109,12 @@ if st.session_state.q_index == 0 and not st.session_state.completed:
             st.rerun()
     st.stop()
 
-# ----------------- QUIZ QUESTIONS -----------------
-questions = [
-    {
-        "q": "How regular was your menstrual cycle in the past year?",
-        "options": [
-            ("Does not apply (e.g., hormonal treatment or pregnancy)", 0),
-            ("Regular (25–35 days)", 1),
-            ("Often irregular (< 25 or > 35 days)", 6),
-            ("Rarely got period (< 6 times a year)", 8),
-        ]
-    },
-    {
-        "q": "Do you notice excessive thick black hair on your face, chest, or back?",
-        "options": [
-            ("No, not at all", 1),
-            ("Yes, manageable with hair removal", 5),
-            ("Yes, resistant to hair removal", 7),
-            ("Yes + scalp thinning or hair loss", 8),
-        ]
-    },
-    {
-        "q": "Have you had acne or oily skin this year?",
-        "options": [
-            ("No", 1),
-            ("Yes, mild but manageable", 4),
-            ("Yes, often despite treatment", 6),
-            ("Yes, severe and persistent", 8),
-        ]
-    },
-    {
-        "q": "Have you experienced weight changes?",
-        "options": [
-            ("No, stable weight", 1),
-            ("Stable only with effort", 2),
-            ("Struggling to maintain weight", 5),
-            ("Can't lose weight despite diet/exercise", 7),
-        ]
-    },
-    {
-        "q": "Do you feel tired or sleepy after meals?",
-        "options": [
-            ("No, not really", 1),
-            ("Sometimes after heavy meals", 2),
-            ("Yes, often regardless of food", 4),
-            ("Yes, almost daily with alertness issues", 6),
-        ]
-    },
-]
-
 # ----------------- QUESTION FLOW -----------------
 index = st.session_state.q_index
 if 1 <= index <= len(questions):
     q = questions[index - 1]
     st.markdown(f"### {q['q']}")
-    selected_option = st.radio(" ", [opt[0] for opt in q["options"]], key=f"q{index}", index=None)
+    selected_option = st.radio(" ", q["options"], key=f"q{index}", index=None)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -128,35 +130,20 @@ if 1 <= index <= len(questions):
             if selected_option is None:
                 st.warning("Please select an option to continue.")
             else:
-                score = next(score for text, score in q["options"] if text == selected_option)
-                st.session_state.answers.append(score)
+                st.session_state.answers.append(selected_option)
                 st.session_state.q_index += 1
                 if st.session_state.q_index > len(questions):
                     st.session_state.completed = True
                 st.rerun()
 
-# ----------------- DIAGNOSIS -----------------
+# ----------------- RESULT SCREEN -----------------
 if st.session_state.completed:
-    total = sum(st.session_state.answers)
-    st.session_state.total_score = total
-
-    if total < 8:
-        diagnosis = "No strong hormonal patterns detected"
-    elif total < 16:
-        diagnosis = "Ovulatory Imbalance"
-    elif total < 24:
-        diagnosis = "HCA-PCO (Possible PCOS)"
-    else:
-        diagnosis = "H-PCO (Androgenic + Metabolic Signs)"
-
-    st.session_state.diagnosis = diagnosis
-
     st.success("✅ Quiz complete!")
-    st.markdown(f"### 🧬 Result: {diagnosis}")
+
     st.markdown("#### 💡 How InBalance Can Help")
     st.info("InBalance helps you track symptoms, cycles, fatigue, skin changes, and more — and our experts use that data to guide your care.")
-    st.image("qr_code.png", width=180)
 
+    st.image("qr_code.png", width=180)
     st.markdown("### 💬 Want to join the InBalance app waitlist?")
     waitlist = st.radio("Would you like to join?", ["Yes", "No"], index=None)
 
@@ -175,9 +162,7 @@ if st.session_state.completed:
                     st.session_state.name,
                     st.session_state.email,
                     st.session_state.phone,
-                    *st.session_state.answers,
-                    diagnosis,
-                    total,
+                    *st.session_state.answers,  # now appending text answers
                     waitlist,
                     tracking,
                     ", ".join(symptoms),
