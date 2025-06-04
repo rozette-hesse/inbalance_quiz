@@ -164,6 +164,7 @@ if st.session_state.completed:
         symptoms = st.multiselect("What symptoms do you deal with most often?", ["Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"])
         goal = st.radio("What is your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Personalized lifestyle plan", "Just curious", "Other"])
         notes = st.text_area("Anything else you'd like us to know?")
+
             if st.button("📩 Finish & Save"):
         try:
             if sheet:
@@ -191,5 +192,3 @@ if st.button("🔄 Restart Quiz"):
     st.session_state.clear()
     st.rerun()
 
-        
-     
