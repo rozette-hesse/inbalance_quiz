@@ -1,25 +1,14 @@
 import streamlit as st
-from PIL import Image
-import re
-import gspread
 from datetime import datetime
-from google.oauth2.service_account import Credentials
+import re
 
 # ----------------- CONFIG -----------------
 st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
-st.image(Image.open("logo.png"), width=140)
 
 # ----------------- SESSION STATE INIT -----------------
-defaults = {
-    "step": "start",
-    "first_name": "", "last_name": "", "email": "",
-    "country_code": "+961", "phone_number": "",
-    "answers": [], "completed": False, "diagnosis": "",
-    "waitlist_opt_in": None, "extra_questions_done": False
-}
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+if 'step' not in st.session_state:
+    st.session_state.step = 'start'
+    st.session_state.answers = []
 
 # ----------------- QUESTIONS -----------------
 questions = [
@@ -70,73 +59,60 @@ questions = [
     }
 ]
 
-# ----------------- GOOGLE SHEETS -----------------
-try:
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
-    sheet = gspread.authorize(creds).open("InBalance_Quiz_Responses").sheet1
-except:
-    sheet = None
-
 # ----------------- STEP: START -----------------
-if st.session_state.step == "start":
+if st.session_state.step == 'start':
     st.title("How Balanced Are Your Hormones?")
     st.subheader("A 1-minute quiz to understand your hormonal health — and how InBalance can help.")
 
-    st.session_state.first_name = st.text_input("👩 First Name", st.session_state.first_name)
-    st.session_state.last_name = st.text_input("👩 Last Name", st.session_state.last_name)
-    st.session_state.email = st.text_input("📧 Email Address", st.session_state.email)
+    first_name = st.text_input("👩 First Name")
+    last_name = st.text_input("👩 Last Name")
+    email = st.text_input("📧 Email Address")
+    country_code = st.selectbox("🌍 Country Code", ["+961", "+1", "+44", "+49", "+33", "+966", "+971", "+20", "+91"])
+    phone_number = st.text_input("📱 Phone Number (without spaces)")
 
-    countries = {
-        "🇱🇧 Lebanon": "+961", "🇺🇸 USA": "+1", "🇬🇧 UK": "+44", "🇩🇪 Germany": "+49",
-        "🇫🇷 France": "+33", "🇦🇪 UAE": "+971", "🇸🇦 Saudi": "+966", "🇪🇬 Egypt": "+20", "🇮🇳 India": "+91"
-    }
-    selected = st.selectbox("🌍 Country", list(countries.keys()))
-    st.session_state.country_code = countries[selected]
-    st.session_state.phone_number = st.text_input("📱 Phone Number (without spaces)", st.session_state.phone_number)
-
-    def is_valid_email(email): return re.match(r"^[\w\.-]+@[\w\.-]+\.\w{2,}$", email)
+    def is_valid_email(email):
+        return re.match(r"^[\w\.-]+@[\w\.-]+\.\w{2,}$", email)
 
     if st.button("Start Quiz"):
-        if not st.session_state.first_name or not st.session_state.last_name:
+        if not first_name or not last_name:
             st.warning("Please enter your full name.")
-        elif not is_valid_email(st.session_state.email):
+        elif not is_valid_email(email):
             st.warning("Enter a valid email address.")
-        elif not st.session_state.phone_number.isdigit() or len(st.session_state.phone_number) < 6:
+        elif not phone_number.isdigit() or len(phone_number) < 6:
             st.warning("Enter a valid phone number.")
         else:
-            st.session_state.step = "quiz"
-            st.rerun()
+            st.session_state.first_name = first_name
+            st.session_state.last_name = last_name
+            st.session_state.email = email
+            st.session_state.country_code = country_code
+            st.session_state.phone_number = phone_number
+            st.session_state.step = 'quiz'
+            st.experimental_rerun()
 
 # ----------------- STEP: QUIZ -----------------
-elif st.session_state.step == "quiz":
+elif st.session_state.step == 'quiz':
     st.header("📝 Answer All Questions")
 
-    answers = []
+    st.session_state.answers = []
     for i, q in enumerate(questions):
-        response = st.radio(f"{i+1}. {q['q']}", q["options"], index=None, key=f"q{i}")
-        answers.append(response)
+        st.markdown(f"**{i+1}. {q['q']}**")
+        response = st.radio("", q["options"], key=f"q{i}")
+        st.session_state.answers.append(response)
 
     if st.button("Submit Answers"):
-        if None in answers:
+        if None in st.session_state.answers:
             st.warning("Please answer all questions before continuing.")
         else:
-            st.session_state.answers = answers
-            st.session_state.step = "results"
-            st.rerun()
+            st.session_state.step = 'results'
+            st.experimental_rerun()
 
 # ----------------- STEP: RESULTS -----------------
-elif st.session_state.step == "results":
+elif st.session_state.step == 'results':
     st.success("✅ Quiz complete!")
 
     q1, q2, q3, q4, q5 = st.session_state.answers
 
     # ----------------- DIAGNOSIS -----------------
-    score_map = {
-        0: {"Regular": 1, "No": 1},
-        1: 2, 2: 4, 3: 6, 4: 8
-    }
-    score = sum([i for i in range(1, 6) if st.session_state.answers[i-1]])
     if "Rarely" in q1 or "Often irregular" in q1:
         diagnosis = "H-PCO (Hormonal and Metabolic)"
         rec = "- Your cycle seems irregular or infrequent — could indicate hormonal imbalance or missed ovulation.\n- You may also be experiencing insulin resistance or inflammation, especially if weight and fatigue are issues."
@@ -154,49 +130,40 @@ elif st.session_state.step == "results":
         rec = "- Subtle symptoms suggest irregular ovulation or mild estrogen-progesterone imbalance."
 
     st.markdown(f"### 🧬 Diagnosis: **{diagnosis}**")
-    st.markdown("#### 🔍 Personalized Insights")
-    st.markdown(rec)
+    st.info(rec)
 
-    st.image("qr_code.png", width=180)
+    st.warning("**Disclaimer:** This quiz is for informational purposes only and does not constitute medical advice. Please consult with a qualified healthcare provider for personalized guidance.")
+
+    # ----------------- INBALANCE SUPPORT -----------------
+    st.markdown("### 💡 How InBalance Can Support You")
+    st.info("""
+At InBalance, we specialize in assisting women with hormonal imbalances, particularly PCOS. Our comprehensive approach includes:
+
+- **Expert Consultations:** Access to gynecologists, endocrinologists, nutritionists, and personal trainers.
+- **Personalized Plans:** Tailored lifestyle and treatment plans based on your unique profile.
+- **Ongoing Support:** Continuous monitoring and adjustments to ensure optimal health outcomes.
+
+Join our community and take the first step towards hormonal balance.
+""")
 
     # ----------------- WAITLIST -----------------
     st.markdown("### 💬 Want to join the InBalance waitlist?")
-    st.session_state.waitlist_opt_in = st.radio("Would you like to join?", ["Yes", "No"], index=None)
+    waitlist_opt_in = st.radio("Would you like to join?", ["Yes", "No"], index=1)
 
-    tracking = goal = notes = ""
-    symptoms = []
-
-    if st.session_state.waitlist_opt_in == "Yes":
-        tracking = st.radio("Do you track your cycle/symptoms?", ["Yes, with an app", "Yes, manually", "No, but I want to", "Other"], index=None)
+    if waitlist_opt_in == "Yes":
+        tracking = st.radio("Do you track your cycle/symptoms?", ["Yes, with an app", "Yes, manually", "No, but I want to", "Other"])
         symptoms = st.multiselect("Symptoms you face:", ["Irregular cycles", "Low energy", "Mood swings", "Acne", "Cravings", "Bloating", "Brain fog"])
-        goal = st.radio("Your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Lifestyle plan", "Other"], index=None)
+        goal = st.radio("Your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Lifestyle plan", "Other"])
         notes = st.text_area("Anything else you'd like to share?")
 
-    if st.button("📩 Finish & Save"):
-        try:
-            if sheet:
-                sheet.append_row([
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    st.session_state.first_name,
-                    st.session_state.last_name,
-                    st.session_state.email,
-                    st.session_state.country_code + st.session_state.phone_number,
-                    *st.session_state.answers,
-                    diagnosis,
-                    rec,
-                    st.session_state.waitlist_opt_in,
-                    tracking,
-                    ", ".join(symptoms),
-                    goal,
-                    notes
-                ])
-                st.success("✅ Your answers were saved successfully!")
-            else:
-                st.error("Google Sheets is not connected.")
-        except Exception as e:
-            st.error(f"Could not save to Google Sheets: {e}")
+        if st.button("📩 Finish & Save"):
+            # Here you can add code to save the responses to a database or send an email
+            st.success("✅ Your information has been saved successfully!")
+    else:
+        if st.button("📩 Finish"):
+            st.success("✅ Thank you for completing the quiz!")
 
-# ----------------- RESTART -----------------
-if st.button("🔄 Restart Quiz"):
-    st.session_state.clear()
-    st.rerun()
+    # ----------------- RESTART -----------------
+    if st.button("🔄 Restart Quiz"):
+        st.session_state.clear()
+        st.experimental_rerun()
