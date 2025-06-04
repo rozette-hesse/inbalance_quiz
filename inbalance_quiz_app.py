@@ -13,9 +13,23 @@ logo = Image.open("logo.png")
 st.image(logo, width=120)
 
 # ----------------- SESSION STATE INIT -----------------
-for key in ["q_index", "answers", "completed", "name", "email", "phone", "waitlist_opt_in", "extra_questions_done"]:
-    if key not in st.session_state:
-        st.session_state[key] = "" if key in ["name", "email", "phone"] else 0 if key == "q_index" else False if key == "completed" else None
+if "q_index" not in st.session_state:
+    st.session_state.q_index = 0
+if "answers" not in st.session_state:
+    st.session_state.answers = []
+if "completed" not in st.session_state:
+    st.session_state.completed = False
+if "name" not in st.session_state:
+    st.session_state.name = ""
+if "email" not in st.session_state:
+    st.session_state.email = ""
+if "phone" not in st.session_state:
+    st.session_state.phone = ""
+if "waitlist_opt_in" not in st.session_state:
+    st.session_state.waitlist_opt_in = None
+if "extra_questions_done" not in st.session_state:
+    st.session_state.extra_questions_done = False
+
 
 # ----------------- GOOGLE SHEETS -----------------
 try:
