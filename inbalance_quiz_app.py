@@ -13,23 +13,19 @@ logo = Image.open("logo.png")
 st.image(logo, width=120)
 
 # ----------------- SESSION STATE INIT -----------------
-if "q_index" not in st.session_state:
-    st.session_state.q_index = 0
-if "answers" not in st.session_state:
-    st.session_state.answers = []
-if "completed" not in st.session_state:
-    st.session_state.completed = False
-if "name" not in st.session_state:
-    st.session_state.name = ""
-if "email" not in st.session_state:
-    st.session_state.email = ""
-if "phone" not in st.session_state:
-    st.session_state.phone = ""
-if "waitlist_opt_in" not in st.session_state:
-    st.session_state.waitlist_opt_in = None
-if "extra_questions_done" not in st.session_state:
-    st.session_state.extra_questions_done = False
-
+defaults = {
+    "q_index": 0,
+    "answers": [],
+    "completed": False,
+    "name": "",
+    "email": "",
+    "phone": "",
+    "waitlist_opt_in": None,
+    "extra_questions_done": False
+}
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 # ----------------- GOOGLE SHEETS -----------------
 try:
@@ -42,7 +38,7 @@ try:
     credentials = Credentials.from_service_account_info(credentials_dict, scopes=scope)
     client = gspread.authorize(credentials)
     sheet = client.open("InBalance_Quiz_Responses").sheet1
-except Exception as e:
+except Exception:
     sheet = None
 
 # ----------------- START SCREEN -----------------
@@ -178,11 +174,20 @@ if st.session_state.completed:
     st.markdown("### 💬 Want to join the InBalance app waitlist?")
     st.session_state.waitlist_opt_in = st.radio("Would you like to join?", ["Yes", "No"])
 
-    if st.session_state.waitlist_opt_in == "Yes" and not st.session_state.extra_questions_done:
-        tracking = st.radio("Do you currently track your cycle or symptoms?", ["Yes, with an app", "Yes, manually", "No, but I want to", "No, and I don’t know where to start", "Other"])
-        symptoms = st.multiselect("What symptoms do you deal with most often?", ["Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"])
-        goal = st.radio("What is your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Personalized lifestyle plan", "Just curious", "Other"])
-        notes = st.text_area("Anything else you'd like us to know?")
+    if not st.session_state.extra_questions_done:
+        if st.session_state.waitlist_opt_in == "Yes":
+            tracking = st.radio("Do you currently track your cycle or symptoms?", [
+                "Yes, with an app", "Yes, manually", "No, but I want to", "No, and I don’t know where to start", "Other"])
+            symptoms = st.multiselect("What symptoms do you deal with most often?", [
+                "Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"])
+            goal = st.radio("What is your main health goal?", [
+                "Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Personalized lifestyle plan", "Just curious", "Other"])
+            notes = st.text_area("Anything else you'd like us to know?")
+        else:
+            tracking = "Declined waitlist"
+            symptoms = []
+            goal = ""
+            notes = ""
 
         if st.button("📩 Finish & Save"):
             try:
