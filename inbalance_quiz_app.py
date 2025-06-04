@@ -87,7 +87,7 @@ if st.session_state.step == 'start':
             st.session_state.country_code = country_code
             st.session_state.phone_number = phone_number
             st.session_state.step = 'quiz'
-            st.experimental_rerun()
+            st.rerun()
 
 # ----------------- STEP: QUIZ -----------------
 elif st.session_state.step == 'quiz':
@@ -166,4 +166,4 @@ Join our community and take the first step towards hormonal balance.
     # ----------------- RESTART -----------------
     if st.button("🔄 Restart Quiz"):
         st.session_state.clear()
-        st.experimental_rerun()
+        st.rerun()
