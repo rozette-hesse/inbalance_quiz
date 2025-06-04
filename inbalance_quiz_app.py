@@ -164,30 +164,30 @@ if st.session_state.completed:
         symptoms = st.multiselect("What symptoms do you deal with most often?", ["Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"])
         goal = st.radio("What is your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Personalized lifestyle plan", "Just curious", "Other"])
         notes = st.text_area("Anything else you'd like us to know?")
+            if st.button("📩 Finish & Save"):
+        try:
+            if sheet:
+                sheet.append_row([
+                    st.session_state.name,
+                    st.session_state.email,
+                    st.session_state.phone,
+                    *st.session_state.answers,
+                    st.session_state.get("diagnosis", ""),
+                    st.session_state.get("total_score", ""),
+                    tracking,
+                    ", ".join(symptoms),
+                    goal,
+                    notes
+                ])
+                st.success("✅ Your responses were saved successfully!")
+                st.session_state.extra_questions_done = True
+            else:
+                st.error("❌ Google Sheet not connected properly.")
+        except Exception as e:
+            st.error(f"❌ Could not save to Google Sheets: {e}")
 
-        if st.button("📩 Finish & Save"):
-            try:
-                if sheet:
-                    sheet.append_row([
-                        st.session_state.name,
-                        st.session_state.email,
-                        st.session_state.phone,
-                        *st.session_state.answers,
-                        st.session_state.get("diagnosis", ""),
-                        st.session_state.get("total_score", ""),
-                        tracking,
-                        ", ".join(symptoms),
-                        goal,
-                        notes
-                    ])
-                    st.success("✅ Your responses were saved successfully!")
-                    st.session_state.extra_questions_done = True
-                else:
-                    st.error("❌ Google Sheet not connected properly.")
-            except Exception as e:
-                st.error(f"❌ Could not save to Google Sheets: {e}")
-
-# Restart option (always available)
+# ✅ Always outside the try/except
 if st.button("🔄 Restart Quiz"):
     st.session_state.clear()
     st.rerun()
+
