@@ -5,3 +5,5 @@ openai
 Pillow
 gspread
 oauth2client
+pycountry
+phonenumbers
