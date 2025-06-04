@@ -104,7 +104,7 @@ elif st.session_state.step == 'quiz':
             st.warning("Please answer all questions before continuing.")
         else:
             st.session_state.step = 'results'
-            st.experimental_rerun()
+            st.rerun()
 
 # ----------------- STEP: RESULTS -----------------
 elif st.session_state.step == 'results':
