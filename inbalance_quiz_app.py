@@ -1,4 +1,3 @@
-
 from oauth2client.service_account import ServiceAccountCredentials
 import streamlit as st
 from PIL import Image
@@ -6,21 +5,19 @@ import re
 import gspread
 from google.oauth2.service_account import Credentials
 
-# App Setup
+# ----------------- CONFIGURATION -----------------
 st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
+
+# Load branding
 logo = Image.open("logo.png")
 st.image(logo, width=120)
 
-# Session State
-if "q_index" not in st.session_state: st.session_state.q_index = 0
-if "answers" not in st.session_state: st.session_state.answers = []
-if "completed" not in st.session_state: st.session_state.completed = False
-if "name" not in st.session_state: st.session_state.name = ""
-if "email" not in st.session_state: st.session_state.email = ""
-if "waitlist_opt_in" not in st.session_state: st.session_state.waitlist_opt_in = None
-if "extra_questions_done" not in st.session_state: st.session_state.extra_questions_done = False
+# ----------------- SESSION STATE INIT -----------------
+for key in ["q_index", "answers", "completed", "name", "email", "phone", "waitlist_opt_in", "extra_questions_done"]:
+    if key not in st.session_state:
+        st.session_state[key] = "" if key in ["name", "email", "phone"] else 0 if key == "q_index" else False if key == "completed" else None
 
-# Google Sheets Auth
+# ----------------- GOOGLE SHEETS -----------------
 try:
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     credentials_dict = st.secrets["gcp_service_account"]
@@ -30,14 +27,14 @@ try:
 except Exception as e:
     sheet = None
 
-
-
+# ----------------- START SCREEN -----------------
 if st.session_state.q_index == 0 and not st.session_state.completed:
     st.title("How Balanced Are Your Hormones?")
     st.subheader("A 1-minute quiz to help you understand your hormonal health — and how InBalance can help.")
-    
-    st.session_state.name = st.text_input("👤 First Name:")
-    st.session_state.email = st.text_input("📧 Email Address:")
+
+    st.session_state.name = st.text_input("👤 First Name:", st.session_state.name)
+    st.session_state.email = st.text_input("📧 Email Address:", st.session_state.email)
+    st.session_state.phone = st.text_input("📱 Phone Number (optional):", st.session_state.phone)
 
     def is_valid_email(email):
         return re.match(r"[^@]+@[^@]+\.[^@]+", email)
@@ -52,8 +49,7 @@ if st.session_state.q_index == 0 and not st.session_state.completed:
             st.rerun()
     st.stop()
 
-
-
+# ----------------- QUIZ QUESTIONS -----------------
 questions = [
     {
         "q": "How regular was your menstrual cycle in the past year?",
@@ -103,36 +99,37 @@ questions = [
 ]
 
 index = st.session_state.q_index
-if index < len(questions):
-    q = questions[index]
+if 1 <= index <= len(questions):
+    q = questions[index - 1]
     st.markdown(f"### {q['q']}")
-
-    options = ["-- Please select --"] + [opt[0] for opt in q["options"]]
+    options = [opt[0] for opt in q["options"]]
     selected_option = st.radio(" ", options, key=f"q{index}")
 
     col1, col2 = st.columns(2)
-
     with col1:
-        if st.button("⬅️ Back", key=f"back_{index}"):
-            if st.session_state.q_index > 0:
+        if st.button("⬅️ Back"):
+            if index > 1:
                 st.session_state.q_index -= 1
-                st.session_state.answers.pop()
+                if st.session_state.answers:
+                    st.session_state.answers.pop()
                 st.rerun()
 
     with col2:
-        if st.button("➡️ Next", key=f"next_{index}"):
-            if selected_option == "-- Please select --":
-                st.warning("Please select an option to continue.")
-            else:
-                selected_score = next(score for text, score in q["options"] if text == selected_option)
-                st.session_state.answers.append(selected_score)
+        if st.button("➡️ Next"):
+            if selected_option:
+                score = next(score for text, score in q["options"] if text == selected_option)
+                st.session_state.answers.append(score)
                 st.session_state.q_index += 1
+                if st.session_state.q_index > len(questions):
+                    st.session_state.completed = True
                 st.rerun()
+            else:
+                st.warning("Please select an option to continue.")
 
-
-
+# ----------------- DIAGNOSIS -----------------
 if st.session_state.completed:
     total = sum(st.session_state.answers)
+    st.session_state.total_score = total
 
     if total < 8:
         diagnosis = "No strong hormonal patterns detected"
@@ -146,6 +143,8 @@ if st.session_state.completed:
     else:
         diagnosis = "H-PCO (Androgenic + Metabolic Signs)"
         rec = "You show signs of both hormone and metabolic imbalance. A tailored approach is recommended."
+
+    st.session_state.diagnosis = diagnosis
 
     st.success("✅ Quiz complete!")
     st.markdown(f"### 🧬 Result: {diagnosis}")
@@ -165,31 +164,30 @@ if st.session_state.completed:
         symptoms = st.multiselect("What symptoms do you deal with most often?", ["Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"])
         goal = st.radio("What is your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Personalized lifestyle plan", "Just curious", "Other"])
         notes = st.text_area("Anything else you'd like us to know?")
-        
-        if st.button("📩 Finish & Save"):  # ✅ This should be INSIDE the same block
-        try:
-            if sheet:
-                sheet.append_row([
-                    st.session_state.name,
-                    st.session_state.email,
-                    st.session_state.phone,
-                    *st.session_state.answers,
-                    st.session_state.get("diagnosis", ""),
-                    st.session_state.get("total_score", ""),
-                    tracking,
-                    ", ".join(symptoms),
-                    goal,
-                    notes
-                ])
-                st.session_state.extra_questions_done = True  # ✅ Prevent repeat
-                st.success("✅ Your responses were saved successfully!")
-            else:
-                st.error("❌ Google Sheet not connected properly.")
-        except Exception as e:
-            st.error(f"❌ Could not save to Google Sheets: {e}")
-        
-        if st.button("🔄 Restart Quiz"):
-            st.session_state.clear()
-            st.rerun()
 
+        if st.button("📩 Finish & Save"):
+            try:
+                if sheet:
+                    sheet.append_row([
+                        st.session_state.name,
+                        st.session_state.email,
+                        st.session_state.phone,
+                        *st.session_state.answers,
+                        st.session_state.get("diagnosis", ""),
+                        st.session_state.get("total_score", ""),
+                        tracking,
+                        ", ".join(symptoms),
+                        goal,
+                        notes
+                    ])
+                    st.success("✅ Your responses were saved successfully!")
+                    st.session_state.extra_questions_done = True
+                else:
+                    st.error("❌ Google Sheet not connected properly.")
+            except Exception as e:
+                st.error(f"❌ Could not save to Google Sheets: {e}")
 
+# Restart option (always available)
+if st.button("🔄 Restart Quiz"):
+    st.session_state.clear()
+    st.rerun()
