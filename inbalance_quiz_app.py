@@ -16,7 +16,8 @@ defaults = {
     "q_index": 0,
     "answers": [],
     "completed": False,
-    "name": "",
+    "first_name": "",
+    "last_name": "",
     "email": "",
     "phone": "",
     "waitlist_opt_in": None,
@@ -38,7 +39,7 @@ try:
 except Exception:
     sheet = None
 
-# ----------------- QUIZ QUESTIONS -----------------
+# ----------------- QUESTIONS -----------------
 questions = [
     {
         "q": "How regular was your menstrual cycle in the past year?",
@@ -92,24 +93,27 @@ if st.session_state.q_index == 0 and not st.session_state.completed:
     st.title("How Balanced Are Your Hormones?")
     st.subheader("A 1-minute quiz to help you understand your hormonal health — and how InBalance can help.")
 
-    st.session_state.name = st.text_input("👤 First Name:", st.session_state.name)
+    st.session_state.first_name = st.text_input("👤 First Name:", st.session_state.first_name)
+    st.session_state.last_name = st.text_input("👤 Last Name:", st.session_state.last_name)
     st.session_state.email = st.text_input("📧 Email Address:", st.session_state.email)
-    st.session_state.phone = st.text_input("📱 Phone Number (optional):", st.session_state.phone)
+    st.session_state.phone = st.text_input("📱 Phone Number (include country code):", st.session_state.phone, placeholder="+961...")
 
     def is_valid_email(email):
         return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
     if st.button("Start Quiz"):
-        if not st.session_state.name.strip():
-            st.warning("Please enter your name to continue.")
+        if not st.session_state.first_name.strip() or not st.session_state.last_name.strip():
+            st.warning("Please enter both first and last name.")
         elif not is_valid_email(st.session_state.email):
             st.warning("Please enter a valid email address.")
+        elif not st.session_state.phone.strip().startswith("+"):
+            st.warning("Please enter a valid phone number with country code (e.g. +961...).")
         else:
             st.session_state.q_index = 1
             st.rerun()
     st.stop()
 
-# ----------------- QUESTION FLOW -----------------
+# ----------------- QUIZ FLOW -----------------
 index = st.session_state.q_index
 if 1 <= index <= len(questions):
     q = questions[index - 1]
@@ -136,7 +140,7 @@ if 1 <= index <= len(questions):
                     st.session_state.completed = True
                 st.rerun()
 
-# ----------------- RESULT SCREEN -----------------
+# ----------------- RESULT + WAITLIST -----------------
 if st.session_state.completed:
     st.success("✅ Quiz complete!")
 
@@ -159,10 +163,11 @@ if st.session_state.completed:
             if sheet:
                 sheet.append_row([
                     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    st.session_state.name,
+                    st.session_state.first_name,
+                    st.session_state.last_name,
                     st.session_state.email,
                     st.session_state.phone,
-                    *st.session_state.answers,  # now appending text answers
+                    *st.session_state.answers,
                     waitlist,
                     tracking,
                     ", ".join(symptoms),
@@ -176,7 +181,7 @@ if st.session_state.completed:
         except Exception as e:
             st.error(f"❌ Could not save to Google Sheets: {e}")
 
-# ----------------- RESTART -----------------
+# ----------------- RESTART OPTION -----------------
 if st.button("🔄 Restart Quiz"):
     st.session_state.clear()
     st.rerun()
