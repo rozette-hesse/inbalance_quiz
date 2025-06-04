@@ -6,40 +6,33 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-# ----------------- CONFIG -----------------
+# -------------- CONFIG --------------
 st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
-logo = Image.open("logo.png")
-st.image(logo, width=120)
+st.image(Image.open("logo.png"), width=120)
 
-# ----------------- SESSION STATE INIT -----------------
+# -------------- SESSION INIT --------------
 defaults = {
-    "q_index": 0,
-    "answers": [],
-    "completed": False,
-    "first_name": "",
-    "last_name": "",
-    "email": "",
-    "phone": "",
-    "waitlist_opt_in": None,
-    "extra_questions_done": False
+    "q_index": 0, "answers": [], "completed": False,
+    "first_name": "", "last_name": "", "email": "",
+    "country_code": "+961", "phone_number": "",
+    "waitlist_opt_in": None, "extra_questions_done": False
 }
-for key, val in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = val
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
-# ----------------- GOOGLE SHEETS -----------------
+# -------------- GOOGLE SHEETS --------------
 try:
     scope = ["https://spreadsheets.google.com/feeds",
              "https://www.googleapis.com/auth/spreadsheets",
              "https://www.googleapis.com/auth/drive"]
     credentials_dict = st.secrets["gcp_service_account"]
     credentials = Credentials.from_service_account_info(credentials_dict, scopes=scope)
-    client = gspread.authorize(credentials)
-    sheet = client.open("InBalance_Quiz_Responses").sheet1
+    sheet = gspread.authorize(credentials).open("InBalance_Quiz_Responses").sheet1
 except Exception:
     sheet = None
 
-# ----------------- QUESTIONS -----------------
+# -------------- QUESTIONS --------------
 questions = [
     {
         "q": "How regular was your menstrual cycle in the past year?",
@@ -88,7 +81,7 @@ questions = [
     },
 ]
 
-# ----------------- START SCREEN -----------------
+# -------------- START PAGE --------------
 if st.session_state.q_index == 0 and not st.session_state.completed:
     st.title("How Balanced Are Your Hormones?")
     st.subheader("A 1-minute quiz to help you understand your hormonal health — and how InBalance can help.")
@@ -96,24 +89,27 @@ if st.session_state.q_index == 0 and not st.session_state.completed:
     st.session_state.first_name = st.text_input("👤 First Name:", st.session_state.first_name)
     st.session_state.last_name = st.text_input("👤 Last Name:", st.session_state.last_name)
     st.session_state.email = st.text_input("📧 Email Address:", st.session_state.email)
-    st.session_state.phone = st.text_input("📱 Phone Number (include country code):", st.session_state.phone, placeholder="+961...")
+
+    country_options = ["+961", "+1", "+44", "+49", "+33", "+971", "+966", "+20", "+91"]
+    st.session_state.country_code = st.selectbox("🌍 Country Code", country_options, index=country_options.index(st.session_state.country_code))
+    st.session_state.phone_number = st.text_input("📱 Phone Number (no spaces):", st.session_state.phone_number)
 
     def is_valid_email(email):
-        return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+        return re.match(r"^[\w\.-]+@[\w\.-]+\.\w{2,}$", email)
 
     if st.button("Start Quiz"):
         if not st.session_state.first_name.strip() or not st.session_state.last_name.strip():
             st.warning("Please enter both first and last name.")
         elif not is_valid_email(st.session_state.email):
             st.warning("Please enter a valid email address.")
-        elif not st.session_state.phone.strip().startswith("+"):
-            st.warning("Please enter a valid phone number with country code (e.g. +961...).")
+        elif not st.session_state.phone_number.strip().isdigit():
+            st.warning("Phone number must be digits only.")
         else:
             st.session_state.q_index = 1
             st.rerun()
     st.stop()
 
-# ----------------- QUIZ FLOW -----------------
+# -------------- QUIZ LOGIC --------------
 index = st.session_state.q_index
 if 1 <= index <= len(questions):
     q = questions[index - 1]
@@ -140,10 +136,9 @@ if 1 <= index <= len(questions):
                     st.session_state.completed = True
                 st.rerun()
 
-# ----------------- RESULT + WAITLIST -----------------
+# -------------- RESULTS + WAITLIST --------------
 if st.session_state.completed:
     st.success("✅ Quiz complete!")
-
     st.markdown("#### 💡 How InBalance Can Help")
     st.info("InBalance helps you track symptoms, cycles, fatigue, skin changes, and more — and our experts use that data to guide your care.")
 
@@ -151,7 +146,11 @@ if st.session_state.completed:
     st.markdown("### 💬 Want to join the InBalance app waitlist?")
     waitlist = st.radio("Would you like to join?", ["Yes", "No"], index=None)
 
-    tracking, symptoms, goal, notes = "", [], "", ""
+    tracking = ""
+    symptoms = []
+    goal = ""
+    notes = ""
+
     if waitlist == "Yes":
         tracking = st.radio("Do you currently track your cycle or symptoms?", ["Yes, with an app", "Yes, manually", "No, but I want to", "No, and I don’t know where to start", "Other"], index=None)
         symptoms = st.multiselect("What symptoms do you deal with most often?", ["Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog", "Other"])
@@ -161,12 +160,13 @@ if st.session_state.completed:
     if st.button("📩 Finish & Save"):
         try:
             if sheet:
+                full_phone = st.session_state.country_code + st.session_state.phone_number
                 sheet.append_row([
                     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     st.session_state.first_name,
                     st.session_state.last_name,
                     st.session_state.email,
-                    st.session_state.phone,
+                    full_phone,
                     *st.session_state.answers,
                     waitlist,
                     tracking,
@@ -181,7 +181,7 @@ if st.session_state.completed:
         except Exception as e:
             st.error(f"❌ Could not save to Google Sheets: {e}")
 
-# ----------------- RESTART OPTION -----------------
+# -------------- RESTART --------------
 if st.button("🔄 Restart Quiz"):
     st.session_state.clear()
     st.rerun()
