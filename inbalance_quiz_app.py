@@ -86,8 +86,8 @@ if st.session_state.q_index == 0 and not st.session_state.completed:
     st.title("How Balanced Are Your Hormones?")
     st.subheader("A 1-minute quiz to help you understand your hormonal health — and how InBalance can help.")
 
-    st.session_state.first_name = st.text_input("👤 First Name:", st.session_state.first_name)
-    st.session_state.last_name = st.text_input("👤 Last Name:", st.session_state.last_name)
+    st.session_state.first_name = st.text_input("👩 First Name:", st.session_state.first_name)
+    st.session_state.last_name = st.text_input("👩 Last Name:", st.session_state.last_name)
     st.session_state.email = st.text_input("📧 Email Address:", st.session_state.email)
 
     country_options = ["+961", "+1", "+44", "+49", "+33", "+971", "+966", "+20", "+91"]
@@ -136,13 +136,31 @@ if 1 <= index <= len(questions):
                     st.session_state.completed = True
                 st.rerun()
 
-# -------------- RESULTS + WAITLIST --------------
+# -------------- RESULTS + INSIGHTS --------------
 if st.session_state.completed:
     st.success("✅ Quiz complete!")
     st.markdown("#### 💡 How InBalance Can Help")
-    st.info("InBalance helps you track symptoms, cycles, fatigue, skin changes, and more — and our experts use that data to guide your care.")
-
     st.image("qr_code.png", width=180)
+
+    st.markdown("### 🧬 Personalized Results & Guidance")
+    insights = []
+    ans = st.session_state.answers
+
+    if "irregular" in ans[0] or "Rarely got period" in ans[0]:
+        insights.append("Your cycle seems irregular or infrequent. This could indicate hormonal disruptions or lack of ovulation.")
+    if "resistant to hair" in ans[1] or "scalp thinning" in ans[1]:
+        insights.append("You may be experiencing elevated androgens, often linked to PCOS or other imbalances.")
+    if "persistent" in ans[2] or "despite treatment" in ans[2]:
+        insights.append("Chronic acne may point to underlying hormone or inflammation issues.")
+    if "Can't lose weight" in ans[3] or "maintain weight" in ans[3]:
+        insights.append("You might be facing metabolic challenges — especially related to insulin or cortisol.")
+    if "tired" in ans[4] or "daily" in ans[4]:
+        insights.append("Post-meal fatigue is often connected to insulin resistance or blood sugar dysregulation.")
+
+    for insight in insights:
+        st.write(f"🔹 {insight}")
+
+    # Waitlist
     st.markdown("### 💬 Want to join the InBalance app waitlist?")
     waitlist = st.radio("Would you like to join?", ["Yes", "No"], index=None)
 
@@ -157,6 +175,7 @@ if st.session_state.completed:
         goal = st.radio("What is your main health goal?", ["Understand my cycle", "Reduce symptoms", "Looking for diagnosis", "Personalized lifestyle plan", "Just curious", "Other"], index=None)
         notes = st.text_area("Anything else you'd like us to know?")
 
+    # Save to Sheet
     if st.button("📩 Finish & Save"):
         try:
             if sheet:
@@ -168,6 +187,7 @@ if st.session_state.completed:
                     st.session_state.email,
                     full_phone,
                     *st.session_state.answers,
+                    "; ".join(insights),
                     waitlist,
                     tracking,
                     ", ".join(symptoms),
