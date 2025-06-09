@@ -1,186 +1,178 @@
 import streamlit as st
 from PIL import Image
-import re
+import re, unicodedata
+import pycountry
+import phonenumbers
 import gspread
 from google.oauth2.service_account import Credentials
-import phonenumbers
 from datetime import datetime
-import pycountry
 
-# --- CONFIG ---
-st.set_page_config(page_title="InBalance Hormonal Quiz", layout="centered")
+# — CONFIG —
+st.set_page_config(page_title="InBalance Hormonal Health Quiz", layout="centered")
 st.image(Image.open("logo.png"), width=120)
 
-# --- SESSION STATE INIT ---
-if "step" not in st.session_state:
-    st.session_state.step = "start"  # start ➜ quiz ➜ results
-for field in ("first", "last", "email", "country", "phone"):
-    if field not in st.session_state:
-        st.session_state[field] = ""
-if "answers" not in st.session_state:
-    st.session_state.answers = {}
-for field in ("waitlist", "tracking", "symptoms", "goal", "notes"):
-    if field not in st.session_state:
-        st.session_state[field] = ""
+# — SESSION INIT —
+for key, val in {
+    "step": 0,
+    "answers": {},
+    "first": "", "last": "", "email": "", "country": "", "phone": "",
+    "waitlist": None, "tracking": "", "symptoms": [], "goal": "", "notes": ""
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
-# --- GSheets ---
+# — GOOGLE SHEETS AUTH —
 try:
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=[
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ],
-    )
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive"])
     sheet = gspread.authorize(creds).open("InBalance_Quiz_Responses").sheet1
 except Exception:
     sheet = None
 
-# --- QUESTIONS & OPTIONS ---
-questions = [
-    ("How regular was your menstrual cycle in the past year?", ["Does not apply", "Regular", "Often irregular", "Rarely got period"]),
-    ("Do you notice excessive thick black hair on your face, chest, or back?", ["No, not at all", "Yes manageable", "Yes resistant", "Yes + scalp thinning"]),
-    ("Have you had acne or oily skin this year?", ["No", "Yes mild", "Yes often", "Yes severe"]),
-    ("Have you experienced weight changes?", ["Stable", "Stable w/ effort", "Struggling", "Can't lose weight"]),
-    ("Do you feel tired or sleepy after meals?", ["No", "Sometimes", "Yes often", "Yes almost daily"]),
-]
+# — UTILS —
+def flag_emoji(cc):
+    return "".join(unicodedata.lookup(f"REGIONAL INDICATOR SYMBOL LETTER {c}") for c in cc)
 
-# --- START PAGE ---
-if st.session_state.step == "start":
+def valid_phone(cc, num):
+    try:
+        pn = phonenumbers.parse(num, cc)
+        return phonenumbers.is_valid_number(pn)
+    except:
+        return False
+
+# — QUESTIONS & OPTIONS —
+qs = {
+    1: "How regular was your menstrual cycle in the past year?",
+    2: "Do you notice excessive thick black hair on your face, chest, or back?",
+    3: "Have you had acne or oily skin this year?",
+    4: "Have you experienced weight changes?",
+    5: "Do you feel tired or sleepy after meals?"
+}
+opts = {
+    1: ["Does not apply", "Regular (25–35d)", "Often irregular", "Rarely got period"],
+    2: ["No, not at all", "Yes, manageable", "Yes, resistant", "Yes + thinning"],
+    3: ["No", "Yes, mild", "Yes, frequent", "Yes, severe"],
+    4: ["No change", "Stable with effort", "Struggling", "Can't lose"],
+    5: ["No", "Sometimes", "Often", "Almost daily"]
+}
+
+# — STEP 0: PERSONAL INFO —
+if st.session_state.step == 0:
     st.title("How Balanced Are Your Hormones?")
-    st.text_input("👩‍⚕️ First Name", key="first")
-    st.text_input("👩‍⚕️ Last Name", key="last")
-    st.text_input("📧 Email", key="email")
+    st.text_input("🙋‍♀️ First Name", key="first")
+    st.text_input("🙋‍♀️ Last Name", key="last")
+    st.text_input("✉️ Email Address", key="email")
 
-    countries = sorted([ (f"{c.flag} {c.name} (+{c.country_code})", c.alpha_2, c.country_code)
-                        for c in pycountry.countries if hasattr(c, "country_code") ],
-                       key=lambda x: x[0])
-    sel = st.selectbox("🌍 Country", [""] + [c[0] for c in countries])
-    st.session_state.country = next((country[1] for country in countries if country[0] == sel), "")
+    countries = sorted(pycountry.countries, key=lambda c: c.name)
+    formatted = [f"{flag_emoji(c.alpha_2)} {c.name} (+{phonenumbers.country_code_for_region(c.alpha_2)})" for c in countries]
+    choice = st.selectbox("🌍 Country", [""] + formatted)
+    if choice:
+        st.session_state.country = countries[formatted.index(choice)].alpha_2
 
     st.text_input("📱 Phone (no spaces)", key="phone")
 
     if st.button("Start Quiz"):
-        if not st.session_state.first.strip() or not st.session_state.last.strip():
-            st.warning("Please enter full name.")
-        elif not re.match(r"^[\w\.-]+@[\w\.-]+\.\w{2,}$", st.session_state.email):
-            st.warning("Enter valid email.")
-        elif not st.session_state.country:
-            st.warning("Select a country.")
+        if not all([st.session_state.first, st.session_state.last, st.session_state.email, st.session_state.country, st.session_state.phone]):
+            st.warning("All fields are required.")
+        elif not re.match(r"^[\w\.-]+@[\w\.-]+\.\w+$", st.session_state.email):
+            st.warning("Invalid email.")
+        elif not valid_phone(st.session_state.country, st.session_state.phone):
+            st.warning("Invalid phone number.")
         else:
-            try:
-                num = phonenumbers.parse(st.session_state.phone, st.session_state.country)
-                if not phonenumbers.is_valid_number(num):
-                    st.warning("Invalid phone for country.")
-                    st.stop()
-            except:
-                st.warning("Invalid phone or format.")
-                st.stop()
-
-            st.session_state.step = "quiz"
+            st.session_state.step = 1
             st.rerun()
 
-# --- QUIZ PAGE ---
-elif st.session_state.step == "quiz":
+# — STEP 1: QUIZ —
+elif st.session_state.step == 1:
     st.header("📝 Answer All Questions")
-    for idx, (q, opts) in enumerate(questions, 1):
-        st.write(f"**{idx}. {q}**")
-        key = f"q{idx}"
-        if key not in st.session_state.answers:
-            st.session_state.answers[key] = ""
-        st.session_state.answers[key] = st.radio("", opts, key=key, index=-1)
-
-    if st.button("Submit Answers"):
-        if any(v == "" for v in st.session_state.answers.values()):
-            st.warning("Please answer all questions.")
+    for i, q in qs.items():
+        st.markdown(f"**{i}. {q}**")
+        st.session_state.answers[i] = st.radio("", opts[i], key=f"q{i}")
+        st.markdown("---")
+    if st.button("See Results"):
+        if any(ans == "" for ans in st.session_state.answers.values()):
+            st.warning("Please answer all.")
         else:
-            st.session_state.step = "results"
+            st.session_state.step = 2
             st.rerun()
 
-# --- RESULTS + WAITLIST ---
-else:
-    # DIAGNOSIS
-    score_map = {
-        "Does not apply":0, "Regular":1, "Often irregular":6, "Rarely got period":8,
-        "No, not at all":1, "Yes manageable":5, "Yes resistant":7, "Yes + scalp thinning":8,
-        "No":1, "Yes mild":4, "Yes often":6, "Yes severe":8,
-        "Stable":1, "Stable w/ effort":2, "Struggling":5, "Can't lose weight":7,
-        "No":1, "Sometimes":2, "Yes often":4, "Yes almost daily":6
-    }
-    total = sum(score_map.get(v,0) for v in st.session_state.answers.values())
-
-    if total < 8:
-        dx = "Balanced"
-        insights = ["You appear to have balanced hormonal function."]
-    elif total < 16:
-        dx = "Ovulatory Imbalance"
-        insights = ["Tracking ovulation may help clarify patterns."]
-    elif total < 24:
-        dx = "Possible PCOS"
-        insights = ["Symptoms fit mild PCOS — symptom tracking is key."]
+# — STEP 2: RESULTS + WAITLIST —
+elif st.session_state.step == 2:
+    score = sum(opts[i].index(st.session_state.answers[i]) for i in qs)
+    if score < 5:
+        diag = "No strong hormonal imbalance"
+    elif score < 10:
+        diag = "Ovulatory Imbalance"
+    elif score < 15:
+        diag = "Potential PCOS"
     else:
-        dx = "Androgenic + Metabolic signs"
-        insights = ["Symptoms suggest metabolic + androgen imbalance — see specialists."]
+        diag = "Androgenic + Metabolic Imbalance"
 
-    st.markdown(f"### 🧬 Diagnosis: **{dx}**")
-    st.markdown("#### 🔍 Personalized Recommendations:")
-    recs = {
-        1:"Cycle irregularity—track phases daily for insight.",
-        2:"Hair growth—see an endocrinologist or dermatologist.",
-        3:"Oily/severe acne—consider hormone-friendly skin care & nutrition.",
-        4:"Weight difficulty—metabolic nutrition & exercise plans help.",
-        5:"Post-meal fatigue—try balanced carbs/protein for blood sugar."
-    }
-    for i in range(1,6):
-        st.info(recs[i])
+    st.markdown(f"### 🧬 Diagnosis: {diag}")
+    st.success("✅ Quiz complete!")
 
-    st.warning("⚠️ Informational only. Always consult a physician.")
+    # personalized recs
+    rec = []
+    a = st.session_state.answers
+    rec.append("• Irregular or missed periods → daily cycle-phase tracking paired with LH/basal body temperature can help.")
+    if a[2] != opts[2][0]:
+        rec.append("• Excess facial or chest hair may indicate androgen sensitivity. Discuss with an endocrinologist.")
+    if a[3] != opts[3][0]:
+        rec.append("• Acne severity suggests hormonal inflammation—dermatologist or hormonal therapy may help.")
+    if a[4] != opts[4][0]:
+        rec.append("• Weight changes may be metabolic. A lifestyle plan with nutritional coaching could support you.")
+    if a[5] != opts[5][0]:
+        rec.append("• Fatigue after meals hints at blood sugar imbalance—tailored nutrition/phases analysis can help.")
 
-    st.success("💡 Why InBalance Helps")
+    for r in rec:
+        st.info(r)
+
+    st.warning("⚠️ Informational only. Always consult your physician.")
+
+    st.markdown("---")
+    st.markdown("💡 **Why InBalance Helps**")
     st.markdown("""
-        • **Cycle & symptom phase tracking** to identify patterns.  
-        • **Symptom-phase intelligence** — e.g., PMS fatigue or mid-cycle acne.  
-        • **Expert team access**: gynecologists, endocrinologists, nutritionists, trainers.  
-        • **Data‑driven lifestyle & clinical plans** tailored to you.  
-        • **Ongoing support** — adapt as you grow and progress.
+    • 📆 Precise cycle & symptom **phase tracking**  
+    • 🧠 Symptom-phase logic for tailored daily insights  
+    • 🩺 Access to gynecologists, endocrinologists, nutritionists & trainers  
+    • 📊 Data-driven care plans adapted to YOU  
+    • 🧡 Ongoing monitoring and clinical support  
     """)
 
     st.image("qr_code.png", width=180)
-
-    st.markdown("### ✍️ Join the InBalance Waitlist")
-    st.session_state.waitlist = st.radio("Would you like to join?", ["Yes","No"], index=-1)
+    st.markdown("---")
+    st.markdown("### 💬 Join the InBalance Waitlist")
+    st.session_state.waitlist = st.radio("Would you like to join?", ["Yes", "No"])
     if st.session_state.waitlist == "Yes":
-        st.session_state.tracking = st.radio("How do you currently track?", ["App","Manual","Not yet","Unsure"], index=-1)
-        st.session_state.symptoms = st.multiselect("Select your main symptoms:", [
-            "Irregular cycles","Cravings","Low energy","Mood swings",
-            "Bloating","Acne","Anxiety","Sleep issues","Brain fog","Other"
-        ])
-        st.session_state.goal = st.radio("What's your main health goal?", [
-            "Understand cycle","Reduce symptoms","Get diagnosis",
-            "Lifestyle plan","Curious"], index=-1)
-        st.session_state.notes = st.text_area("Anything else you'd like to add?")
+        st.session_state.tracking = st.radio("Track cycle/symptoms by:", ["App","Manual","Not yet","Unsure"])
+        st.session_state.symptoms = st.multiselect("Main symptoms:", ["Irregular cycle","Cravings","Low energy","Mood swings","Bloating","Acne","Anxiety","Sleep issues","Brain fog","Other"])
+        st.session_state.goal = st.radio("Health Goal:", ["Understand cycle","Reduce symptoms","Get diagnosis","Personalized plan","Just curious","Other"])
+        st.session_state.notes = st.text_area("Anything else?")
 
     if st.button("📩 Finish & Save"):
-        try:
+        if sheet:
             row = [
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 st.session_state.first,
                 st.session_state.last,
                 st.session_state.email,
-                st.session_state.country + st.session_state.phone,
-                dx
+                st.session_state.country,
+                st.session_state.phone,
+                diag
             ]
-            for i in range(1,6):
-                row.append(st.session_state.answers[f"q{i}"])
-            row += [st.session_state.waitlist, st.session_state.tracking, ", ".join(st.session_state.symptoms),
-                    st.session_state.goal, st.session_state.notes]
-            if sheet: sheet.append_row(row)
-            st.success("✅ All info saved!")
-        except Exception as e:
-            st.error(f"Save error: {e}")
+            row += [st.session_state.answers[i] for i in qs]
+            row += [st.session_state.waitlist, st.session_state.tracking, ", ".join(st.session_state.symptoms), st.session_state.goal, st.session_state.notes]
+            sheet.append_row(row)
+            st.success("✅ Responses saved. We'll contact you soon!")
+        else:
+            st.error("❌ Can't save—Sheet not connected.")
+        st.session_state.step = 3
 
+# — STEP 3: THANK YOU —
+elif st.session_state.step == 3:
+    st.balloons()
+    st.write("Thank you! We'll be in touch soon 😊")
     if st.button("🔄 Restart"):
-        for field in ("step","first","last","email","country","phone","answers","waitlist","tracking","symptoms","goal","notes"):
-            st.session_state[field] = {} if field=="answers" else ""
-        st.session_state.step = "start"
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         st.rerun()
