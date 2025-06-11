@@ -6,62 +6,62 @@ import pycountry
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --------------- CONFIG ----------------
+# --- CONFIG ---
 st.set_page_config("InBalance Hormonal Quiz", layout="centered")
 st.image(Image.open("logo.png"), width=120)
 
-# --------------- SESSION INIT ---------------
-if "page" not in st.session_state:
-    st.session_state.page = "intro"
-    st.session_state.info = {}
-    st.session_state.answers = {}
-    st.session_state.diagnosis = ""
-    st.session_state.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# --- SESSION INIT ---
+if "stage" not in st.session_state:
+    st.session_state.stage = "intro"
+    st.session_state.info, st.session_state.answers = {}, {}
+    st.session_state.diagnosis, st.session_state.recs = "", []
+    st.session_state.saved = False
 
-# --------------- GOOGLE SHEETS ---------------
+# --- SHEETS INIT ---
 try:
-    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"])
     sheet = gspread.authorize(creds).open("InBalance_Quiz_Responses").sheet1
-except Exception:
+except:
     sheet = None
 
-# --------------- QUESTIONS ----------------
-questions = {
-    "Q1": ("How regular was your menstrual cycle in the past year?", [
+# --- QUESTIONS ---
+questions = [
+    ("How regular was your menstrual cycle in the past year?", [
         "Does not apply (e.g., hormonal treatment or pregnancy)",
         "Regular (25–35 days)",
         "Often irregular (< 25 or > 35 days)",
         "Rarely got period (< 6 times a year)"
     ]),
-    "Q2": ("Do you notice excessive thick black hair on your face, chest, or back?", [
+    ("Do you notice excessive thick black hair on your face, chest, or back?", [
         "No, not at all",
         "Yes, manageable with hair removal",
         "Yes, resistant to hair removal",
         "Yes + scalp thinning or hair loss"
     ]),
-    "Q3": ("Have you had acne or oily skin this year?", [
+    ("Have you had acne or oily skin this year?", [
         "No",
         "Yes, mild but manageable",
         "Yes, often despite treatment",
         "Yes, severe and persistent"
     ]),
-    "Q4": ("Have you experienced weight changes?", [
+    ("Have you experienced weight changes?", [
         "No, stable weight",
         "Stable only with effort",
         "Struggling to maintain weight",
         "Can't lose weight despite diet/exercise"
     ]),
-    "Q5": ("Do you feel tired or sleepy after meals?", [
+    ("Do you feel tired or sleepy after meals?", [
         "No, not really",
         "Sometimes after heavy meals",
         "Yes, often regardless of food",
         "Yes, almost daily with alertness issues"
-    ])
-}
+    ]),
+]
 
-# --------------- UTIL FUNCTIONS ---------------
-def get_country_choices():
+# --- UTIL FUNCTIONS ---
+def get_countries():
     choices = []
     for c in pycountry.countries:
         try:
@@ -70,147 +70,135 @@ def get_country_choices():
             choices.append(f"{emoji} {c.name} (+{code})")
         except:
             pass
-    return sorted(set(choices))
+    return sorted(choices)
 
-def validate_phone(country_entry, number):
+def validate_phone(country_str, number):
     try:
-        country_code = country_entry.split("(+")[1].split(")")[0]
-        phone_obj = phonenumbers.parse(f"+{country_code}{number}")
-        return phonenumbers.is_valid_number(phone_obj)
+        code = country_str.split("(+")[1].split(")")[0]
+        pn = phonenumbers.parse(f"+{code}{number}")
+        return phonenumbers.is_valid_number(pn)
     except:
         return False
 
-# --------------- PAGE: INTRO ---------------
-if st.session_state.page == "intro":
+# --- INTRO ---
+if st.session_state.stage == "intro":
     st.title("How Balanced Are Your Hormones?")
-    st.subheader("A 1‑minute quiz to understand your hormonal health — and how InBalance can help.")
-    fn = st.text_input("👩‍🦰 First Name")
-    ln = st.text_input("👩‍🦰 Last Name")
-    em = st.text_input("📧 Email")
-    countries = get_country_choices()
-    ct = st.selectbox("🌍 Country", [""] + countries)
-    ph = st.text_input("📱 Phone (no spaces)")
+    st.subheader("A 1‑minute quiz to understand your hormonal health.")
+
+    fn = st.text_input("👩‍🦰 First Name", "")
+    ln = st.text_input("👩‍🦰 Last Name", "")
+    em = st.text_input("📧 Email", "")
+    country = st.selectbox("🌍 Country", [""] + get_countries())
+    ph = st.text_input("📱 Phone (no spaces)", "")
 
     if st.button("Start Quiz"):
-        if not all([fn.strip(), ln.strip(), em.strip(), ph.strip(), ct]):
-            st.warning("Please complete all fields.")
-        elif not validate_phone(ct, ph):
-            st.warning("Invalid phone number for selected country.")
+        if not all([fn, ln, em, country, ph]):
+            st.warning("All fields are required.")
+        elif not validate_phone(country, ph):
+            st.warning("Invalid phone for selected country.")
         else:
-            st.session_state.info = {"First Name": fn, "Last Name": ln, "Email": em, "Country": ct, "Phone": ph}
-            st.session_state.page = "quiz"
+            st.session_state.info = {"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                     "First Name": fn, "Last Name": ln,
+                                     "Email": em, "Country": country, "Phone": ph}
+            st.session_state.stage = "quiz"
             st.rerun()
     st.stop()
 
-# --------------- PAGE: QUIZ ---------------
-elif st.session_state.page == "quiz":
+# --- QUIZ ---
+if st.session_state.stage == "quiz":
     st.header("📝 Answer All Questions")
-    for k, (qtext, opts) in questions.items():
-        st.session_state.answers[k] = st.radio(f"**{qtext}**", opts, key=k)
+    for idx, (text, opts) in enumerate(questions, 1):
+        st.session_state.answers[f"Q{idx}"] = st.radio(text, opts, key=f"q{idx}", index=-1)
 
-    if st.button("Submit Answers"):
-        if any(not ans for ans in st.session_state.answers.values()):
+    if st.button("Submit"):
+        if "" in st.session_state.answers.values():
             st.warning("Please answer all questions.")
         else:
-            st.session_state.page = "results"
+            st.session_state.stage = "results"
             st.rerun()
     st.stop()
 
-# --------------- PAGE: RESULTS ---------------
-elif st.session_state.page == "results":
-    st.header("🧬 Your Diagnosis & Personalized Insights")
+# --- RESULTS ---
+if st.session_state.stage == "results":
     A = st.session_state.answers
-    # Determine diagnosis
+    diag = "Mild Hormonal Imbalance"
+    recs = []
+
     if "irregular" in A["Q1"]:
         diag = "Cycle Irregularity"
-    elif "resistant" in A["Q2"] or "scalp" in A["Q2"]:
+        recs.append("Track basal body temperature & flow daily. This can reveal ovulation patterns we can support.")
+    if any(x in A["Q2"] for x in ["resistant", "scalp"]):
         diag = "Potential PCOS"
-    elif "Can't lose weight" in A["Q4"]:
+        recs.append("Hair changes may signal excess androgens — our endocrinologists can guide hormone testing & treatment.")
+    if any(x in A["Q3"] for x in ["oily", "persistent", "severe"]):
+        recs.append("Severe acne may be hormone-driven — targeted dermatological and hormonal care is available.")
+    if "Can't lose weight" in A["Q4"]:
         diag = "Hormonal + Metabolic Concerns"
-    else:
-        diag = "Mild Hormonal Imbalance"
-    st.session_state.diagnosis = diag
+        recs.append("Difficulty losing weight suggests insulin resistance. A personalized metabolic plan helps.")
+    if any(x in A["Q5"] for x in ["fatigue", "sleepy"]):
+        recs.append("Feeling tired post-meals? We offer blood-sugar balancing strategies to help your energy.")
 
     st.subheader(f"🧬 Diagnosis: {diag}")
-    st.markdown("### 🔧 Targeted Recommendations:")
-    recs = []
-    if "irregular" in A["Q1"]:
-        recs.append("Start daily cycle tracking—log basal temperature, flow, and symptoms to identify ovulation patterns.")
-    if "resistant" in A["Q2"] or "scalp" in A["Q2"]:
-        recs.append("Hair thickening or loss may signal elevated androgens—our endocrinologists can evaluate hormonal levels and treatment.")
-    if "severe" in A["Q3"] or "oily" in A["Q3"]:
-        recs.append("Persistent acne can be hormone-related—dermatologists and endocrinologists can tailor treatments.")
-    if "Can't lose weight" in A["Q4"]:
-        recs.append("Difficulty losing weight may be metabolic—consider a personalized nutrition and insulin-sensitivity plan.")
-    if "sleepy" in A["Q5"] or "fatigue" in A["Q5"]:
-        recs.append("Post-meal tiredness suggests glucose fluctuations; we offer blood sugar balancing strategies.")
-
+    st.markdown("### 🔧 Personalized Recommendations:")
     for r in recs:
         st.info(r)
+    st.warning("⚠️ Informational only. Consult your physician.")
 
-    st.warning("⚠️ Informational only. Always consult a physician before making decisions.")
     st.markdown("### 💡 Why InBalance Helps")
     st.success("""
-- 📅 Cycle + symptom phase tracking gives deeper insight  
-- 📊 Recommendations adapt to your current cycle and symptoms  
-- 🩺 Direct access to gynecologists, endocrinologists, nutritionists & trainers  
-- 📚 Personalized data‑backed lifestyle and treatment plans  
-- 🔄 Ongoing support—experts adjust your journey as your body changes
+- 📅 Cycle + symptom phase tracking  
+- 📊 Phase‑specific health recommendations  
+- 🩺 Access to gynecologists, endocrinologists, nutritionists & trainers  
+- 📚 Personalized data‑driven plans  
+- 🔄 Ongoing expert-led guidance
     """)
     st.image("qr_code.png", width=140)
 
-    # 🔁 Auto-save to Sheets here
-    if sheet:
-        try:
-            sheet.append_row([
-                st.session_state.timestamp,
-                *st.session_state.info.values(),
-                *st.session_state.answers.values(),
-                st.session_state.diagnosis,
-                "N/A", "", "", "", ""
-            ])
-        except Exception as e:
-            st.error(f"Auto-save failed: {e}")
+    st.session_state.diagnosis = diag
+    st.session_state.recs = recs
 
-    if st.button("Continue to Waitlist"):
-        st.session_state.page = "waitlist"
-        st.experimental_rerun()
+    if sheet and not st.session_state.saved:
+        row = list(st.session_state.info.values()) + list(A.values()) + [diag, "N/A","", "", "", ""]
+        sheet.append_row(row)
+        st.session_state.saved = True
+
+    if st.button("Join Waitlist"):
+        st.session_state.stage = "waitlist"
+        st.rerun()
     st.stop()
 
-# --------------- PAGE: WAITLIST ---------------
-elif st.session_state.page == "waitlist":
-    st.subheader("💬 Want to join the InBalance waitlist?")
-    join = st.radio("Would you like to join?", ["Yes", "No"])
-    track = ""
-    symptoms = []
-    goal = ""
-    notes = ""
-    if join == "Yes":
-        track = st.radio("Do you track your cycle/symptoms?", ["Yes, with an app", "Yes, manually", "Not yet", "Other"])
-        symptoms = st.multiselect("Top symptoms you face:", ["Irregular cycles", "Cravings", "Low energy", "Mood swings", "Bloating", "Acne", "Anxiety", "Sleep issues", "Brain fog"])
-        goal = st.radio("Main health goal:", ["Understand my cycle", "Reduce symptoms", "Get diagnosis", "Personalized plan", "Just curious"])
-        notes = st.text_area("Other notes you'd like to share:")
+# --- WAITLIST ---
+if st.session_state.stage == "waitlist":
+    st.header("💬 Join the InBalance Waitlist")
 
-    if st.button("📩 Save & Finish"):
+    join = st.radio("Would you like to join?", ["Yes", "No"], index=0)
+    track = symptoms = goal = notes = ""
+
+    if join == "Yes":
+        track = st.radio("Track cycle/symptoms?", ["Yes, with an app", "Yes, manually", "Not yet", "Other"])
+        symptoms = st.multiselect("Top symptoms:", ["Irregular cycles", "Cravings", "Low energy",
+                                                     "Mood swings", "Bloating", "Acne",
+                                                     "Anxiety", "Sleep issues", "Brain fog"])
+        goal = st.radio("Main goal:", ["Understand cycle", "Reduce symptoms",
+                                       "Get diagnosis", "Personalized plan", "Just curious"])
+        notes = st.text_area("Other notes:")
+
+    if st.button("Save & Finish"):
         if sheet:
+            row = list(st.session_state.info.values()) + list(st.session_state.answers.values()) + \
+                  [st.session_state.diagnosis, join, track, ", ".join(symptoms), goal, notes]
             try:
-                sheet.append_row([
-                    st.session_state.timestamp,
-                    *st.session_state.info.values(),
-                    *st.session_state.answers.values(),
-                    st.session_state.diagnosis,
-                    join,
-                    track,
-                    ", ".join(symptoms),
-                    goal,
-                    notes
-                ])
-                st.success("✅ Your responses are saved — we’ll keep you updated!")
+                sheet.append_row(row)
+                st.success("✅ Saved! We’ll be in touch.")
             except Exception as e:
                 st.error(f"Error saving: {e}")
-        else:
-            st.error("❌ Could not connect to Google Sheets.")
+        st.session_state.stage = "done"
+        st.stop()
 
-    if st.button("🔁 Restart Quiz"):
+    st.stop()
+
+if st.session_state.stage == "done":
+    st.success("🎉 Thank you! Your quiz and waitlist info have been recorded.")
+    if st.button("Restart"):
         st.session_state.clear()
         st.rerun()
