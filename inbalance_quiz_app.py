@@ -249,6 +249,18 @@ elif st.session_state.page == "results":
                 st.error("❌ Save failed. Please try again.")
 
 
+        else:
+            st.error("Connection Failed")
+        st.session_state.clear()
+        st.rerun()
+
+
+
+
+
+
+
+
 
 
 
