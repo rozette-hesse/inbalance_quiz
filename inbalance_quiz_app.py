@@ -209,16 +209,35 @@ elif st.session_state.page == "results":
     join = st.radio("Would you like to join?", ["Yes", "No"], key="join")
 
     track = symptoms = goal = notes = ""
+    
     if join == "Yes":
-        track = st.radio("How do you currently track?", ["App", "Manual", "Not yet", "Other"], key="track")
-        symptoms = st.multiselect("Main symptoms you face:", ["Irregular cycles","Acne","Bloating","Fatigue","Mood swings","Cravings","Anxiety","Brain fog","Sleep issues"], key="symptoms")
-        goal = st.radio("Your primary health goal:", ["Understand my cycle","Reduce symptoms","Get a diagnosis","Personalized plan","Other"], key="goal")
-        notes = st.text_area("Anything else you'd like to share?", key="notes")
+    track = st.radio("How do you track symptoms?", ["App", "Manual", "Not yet", "Other"], key="track", index=None)
+    symptoms = st.multiselect("Which symptoms affect you most?", [
+        "Irregular cycles", "Acne", "Bloating", "Fatigue", "Mood swings", 
+        "Cravings", "Anxiety", "Brain fog", "Sleep issues"
+    ], key="symptoms")
+    goal = st.radio("Main health goal?", [
+        "Understand my cycle", "Reduce symptoms", "Get a diagnosis", 
+        "Personalized plan", "Other"
+    ], key="goal", index=None)
+    notes = st.text_area("Any additional info?", key="notes")
+
+
 
     if st.button("📧 Save & Finish"):
         if sheet:
-            row = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
-            row += list(st.session_state.info.values()) + list(a.values()) + [diagnosis, join, track or "", ", ".join(symptoms), goal or "", notes or ""]
+            
+            row = [
+    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    st.session_state.info.get("First Name", ""),
+    st.session_state.info.get("Last Name", ""),
+    st.session_state.info.get("Email", ""),
+    st.session_state.info.get("Country", ""),
+    st.session_state.info.get("Phone", "")
+] + [st.session_state.answers.get(q[0], "") for q in questions] + [
+    diagnosis, join or "", track or "", ", ".join(symptoms), goal or "", notes or ""
+]
+
             try:
                 sheet.append_row(row)
                 st.success("✅ Saved! We’ll contact you soon 💌")
