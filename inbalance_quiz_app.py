@@ -15,9 +15,8 @@ if "page" not in st.session_state:
     st.session_state.page = "intro"
     st.session_state.answers = {}
     st.session_state.info = {}
-    st.session_state.saved = False
 
-# ── GOOGLE SHEETS ──
+# ── SHEETS SETUP ──
 try:
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -59,6 +58,53 @@ questions = [
     ])
 ]
 
+# ── DIAGNOSIS LOGIC ──
+def determine_diagnosis(a):
+    if ("rarely got period" in a["Q1"].lower() and
+        ("resistant" in a["Q2"].lower() or "scalp" in a["Q2"].lower())):
+        return "Possible PCOS"
+    if "often irregular" in a["Q1"].lower() or "rarely got period" in a["Q1"].lower():
+        return "Cycle Irregularity"
+    if "can't lose with diet/exercise" in a["Q4"].lower():
+        return "Metabolic Imbalance"
+    if all(val.startswith(("Does not apply", "Regular", "No")) for val in a.values()):
+        return "No Major Hormonal Issues"
+    return "Mild Hormonal Imbalance"
+
+# ── RECOMMENDATIONS ──
+recs_map = {
+    "Q1": {
+        "Does not apply (e.g., pregnancy or hormonal treatment)": "🧭 Hormonal treatments/pregnancy override natural cycle — track symptoms to spot trends.",
+        "Regular (25–35 days)": "✅ Regular cycle — keep tracking to monitor phase-related symptoms.",
+        "Often irregular (<25 or >35 days)": "🗓️ Irregular cycles suggest hormonal fluctuations — daily logging can reveal your pattern.",
+        "Rarely got period (<6 times/year)": "📉 Infrequent periods may indicate PCOS or low estrogen — consider evaluating hormone levels."
+    },
+    "Q2": {
+        "No": "✅ No unusual hair growth — a sign of healthy androgen levels.",
+        "Yes, manageable": "🔍 Mild hair growth is common; monitor for changes in texture or density.",
+        "Yes, resistant to removal": "🧬 Resistant hair growth may signal androgen excess — consider medical evaluation.",
+        "Yes + scalp thinning/hair loss": "👩‍⚕️ This pattern can indicate androgen imbalance; a specialist review is advisable."
+    },
+    "Q3": {
+        "No": "✅ Clear skin suggests low inflammation and balanced hormones.",
+        "Yes, mild": "💡 Occasional breakouts are normal — track hormone phases for correlation.",
+        "Yes, frequent despite treatment": "🧪 Persistent acne often reflects hormonal imbalance — a tailored skin & nutrition plan helps.",
+        "Yes, severe/persistent": "📋 Severe acne benefits from a combined hormonal, dietary, and clinical approach."
+    },
+    "Q4": {
+        "No, weight is stable": "✅ Stable weight is a good sign — continue healthy routines.",
+        "Stable only with effort": "🍽️ If maintaining takes effort, mild insulin resistance may be present — balance meals carefully.",
+        "Struggling to maintain": "⚖️ Difficulty maintaining weight suggests a metabolic shift — consider nutrition guidance.",
+        "Can't lose with diet/exercise": "📉 Metabolic resistance often indicates hormonal/blood sugar imbalance — support is key."
+    },
+    "Q5": {
+        "No": "✅ Good energy post-meals — indicates balanced blood sugar.",
+        "Sometimes": "🥱 Occasional fatigue is normal — pairing carbs with protein/fiber may help.",
+        "Yes, frequently": "⚡ Regular post-meal drowsiness suggests sugar dips — try adjusting meal composition.",
+        "Yes, daily with low energy": "🩺 Daily crashes may indicate insulin issues — balanced meals + movement recommended."
+    }
+}
+
 # ── UTILITIES ──
 def get_countries():
     countries = [""]
@@ -76,25 +122,25 @@ def valid_phone(country, number):
         return True
     try:
         code = int(country.split("(+")[1].split(")")[0])
-        parsed = phonenumbers.parse(f"+{code}{number}")
-        return phonenumbers.is_valid_number(parsed)
+        p = phonenumbers.parse(f"+{code}{number}")
+        return phonenumbers.is_valid_number(p)
     except:
         return False
 
-# ── INTRO PAGE ──
+# ── INTRO ──
 if st.session_state.page == "intro":
     st.title("How Balanced Are Your Hormones?")
     st.text_input("First Name", key="fn")
     st.text_input("Last Name", key="ln")
     st.text_input("Email", key="email")
     st.selectbox("Country (optional)", get_countries(), key="country")
-    st.text_input("Phone (no spaces, optional)", key="phone")
+    st.text_input("Phone (optional, no spaces)", key="phone")
 
     if st.button("Start Quiz"):
         if not st.session_state.fn or not st.session_state.ln or not st.session_state.email:
-            st.warning("Please enter first name, last name, and email.")
+            st.warning("Please fill in your first name, last name, and email.")
         elif not valid_phone(st.session_state.country, st.session_state.phone):
-            st.warning("Invalid phone number for selected country.")
+            st.warning("Invalid phone number for the selected country.")
         else:
             st.session_state.info = {
                 "First Name": st.session_state.fn,
@@ -109,105 +155,67 @@ if st.session_state.page == "intro":
 # ── QUIZ ──
 elif st.session_state.page == "quiz":
     st.header("📝 Answer All Questions")
-    for qid, qtext, options in questions:
-        st.markdown(f"**{qtext}**", unsafe_allow_html=True)
-        st.session_state.answers[qid] = st.radio("", options, key=qid, index=None)
-        st.markdown("<hr>", unsafe_allow_html=True)
+    for qid, text, opts in questions:
+        st.markdown(f"**{text}**")
+        st.session_state.answers[qid] = st.radio("", opts, key=qid)
+        st.markdown("---")
 
     if st.button("Submit Answers"):
-        if any(answer is None for answer in st.session_state.answers.values()):
-            st.warning("Please answer all questions.")
+        if any(v is None for v in st.session_state.answers.values()):
+            st.warning("Please answer every question.")
         else:
             st.session_state.page = "results"
             st.rerun()
 
-# ── RESULTS ──
+# ── RESULTS & WAITLIST ──
 elif st.session_state.page == "results":
     a = st.session_state.answers
-    st.subheader("🧬 Diagnosis: Based on your responses")
+    diagnosis = determine_diagnosis(a)
 
-    # Simple logic
-    diagnosis = "Mild Hormonal Imbalance"
+    st.subheader(f"🧬 Diagnosis: {diagnosis}")
     st.markdown("### 📌 Personalized Recommendations")
-
-
-    recs = {
-    "Q1": {
-        "Does not apply (e.g., pregnancy or hormonal treatment)": "🧭 Hormonal treatments or pregnancy can override natural cycle patterns. Log symptoms instead to find trends.",
-        "Regular (25–35 days)": "✅ Your cycle length looks regular! Keep tracking to spot phase-based symptoms.",
-        "Often irregular (<25 or >35 days)": "🗓️ Irregular timing could suggest hormonal fluctuations—track your symptoms daily to understand your pattern.",
-        "Rarely got period (<6 times/year)": "📉 Infrequent periods may signal PCOS or low estrogen. Consider hormone evaluation."
-    },
-    "Q2": {
-        "No": "✅ No signs of abnormal hair growth. That’s a good indicator of hormone balance.",
-        "Yes, manageable": "🔍 Some facial/body hair is common. Keep observing for any changes in amount or texture.",
-        "Yes, resistant to removal": "🧬 Hair growth that's hard to manage may reflect high androgens. An expert can help.",
-        "Yes + scalp thinning/hair loss": "👩‍⚕️ This pattern may signal androgen excess. A specialist review is useful."
-    },
-    "Q3": {
-        "No": "✅ Clear skin suggests low inflammation and balanced hormones.",
-        "Yes, mild": "💡 Occasional breakouts can occur with normal cycle changes. Track when they appear.",
-        "Yes, frequent despite treatment": "🧪 Persistent acne can reflect hormonal imbalance. A targeted care plan helps.",
-        "Yes, severe/persistent": "📋 Severe acne needs a hormonal + lifestyle approach. Consider expert review."
-    },
-    "Q4": {
-        "No, weight is stable": "✅ Stability in weight is a good metabolic sign. Keep supporting your body with movement & nutrients.",
-        "Stable only with effort": "🍽️ Needing extra effort may hint at mild insulin resistance. Support with meal balance.",
-        "Struggling to maintain": "⚖️ This might signal metabolic imbalance—nutritionist support can help rebalance.",
-        "Can't lose with diet/exercise": "📉 Weight resistance often links to hormones or blood sugar. Explore a metabolic reset plan."
-    },
-    "Q5": {
-        "No": "✅ Great energy after meals! That suggests blood sugar is well-regulated.",
-        "Sometimes": "🥱 Post-meal dips can happen—try pairing carbs with protein/fiber.",
-        "Yes, frequently": "⚡ Frequent fatigue after eating may mean sugar swings. Track timing & meal content.",
-        "Yes, daily with low energy": "🩺 Daily crashes may signal insulin resistance. Support with blood sugar balancing meals + light movement."
-    }
-}
-
-
-    has_recommendation = False
-    for qid, selected in a.items():
-        rec = recs.get(qid, {}).get(selected)
+    has_rec = False
+    for qid, sel in a.items():
+        rec = recs_map[qid].get(sel)
         if rec:
             st.info(rec)
-            has_recommendation = True
+            has_rec = True
+    if not has_rec:
+        st.success("🎉 Your responses indicate no major hormonal issues. Continue tracking monthly!")
 
-    if not has_recommendation:
-        st.success("🎉 Your answers show no major hormonal concerns. Keep monitoring your cycle and symptoms monthly!")
-
-    st.warning("⚠️ This is informational only. Please consult a physician for any medical advice.")
+    st.warning("⚠️ Informational only—consult a physician for medical advice.")
 
     st.markdown("### 💡 Why InBalance Helps")
     st.success("""
-- 🧠 Accurate cycle & symptom tracking  
-- 🩺 Access to expert care (gynecologists, endocrinologists, nutritionists, fitness pros)  
-- 🧬 Personalized care plans based on YOUR profile  
-- 🔁 Ongoing tracking and expert adjustment  
-- 💬 All in one place, easy and smart
-    """)
-
+- 🧠 Smart cycle & symptom tracking  
+- 🩺 Access to medical experts  
+- 🧬 Personalized lifestyle and clinical plans  
+- 🔁 Ongoing support  
+- 💬 All in one platform
+""")
     st.image("qr_code.png", width=240)
 
     st.markdown("---")
     st.subheader("📥 Join the InBalance Waitlist")
-    join = st.radio("Would you like to join?", ["Yes", "No"], key="join", index=None)
+    join = st.radio("Would you like to join?", ["Yes", "No"], key="join")
 
     track = symptoms = goal = notes = ""
     if join == "Yes":
-        track = st.radio("How do you track symptoms?", ["App", "Manual", "Not yet", "Other"], key="track")
-        symptoms = st.multiselect("Which symptoms affect you most?", ["Irregular cycles", "Acne", "Bloating", "Fatigue", "Mood swings", "Cravings", "Anxiety", "Brain fog", "Sleep issues"], key="symptoms")
-        goal = st.radio("Main health goal?", ["Understand my cycle", "Reduce symptoms", "Get a diagnosis", "Personalized plan", "Other"], key="goal")
-        notes = st.text_area("Any additional info?", key="notes")
+        track = st.radio("How do you currently track?", ["App", "Manual", "Not yet", "Other"], key="track")
+        symptoms = st.multiselect("Main symptoms you face:", ["Irregular cycles","Acne","Bloating","Fatigue","Mood swings","Cravings","Anxiety","Brain fog","Sleep issues"], key="symptoms")
+        goal = st.radio("Your primary health goal:", ["Understand my cycle","Reduce symptoms","Get a diagnosis","Personalized plan","Other"], key="goal")
+        notes = st.text_area("Anything else you'd like to share?", key="notes")
 
     if st.button("📧 Save & Finish"):
         if sheet:
-            row = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")] + list(st.session_state.info.values()) + list(a.values()) + [diagnosis, join or "", track or "", ", ".join(symptoms), goal or "", notes or ""]
+            row = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+            row += list(st.session_state.info.values()) + list(a.values()) + [diagnosis, join, track or "", ", ".join(symptoms), goal or "", notes or ""]
             try:
                 sheet.append_row(row)
-                st.success("✅ Saved! We'll be in touch soon 💌")
+                st.success("✅ Saved! We’ll contact you soon 💌")
             except:
-                st.error("❌ Failed to save. Try again.")
+                st.error("❌ Save failed. Please try again.")
         else:
-            st.error("Spreadsheet not connected.")
+            st.error("Spreadsheet connection failed.")
         st.session_state.clear()
         st.rerun()
