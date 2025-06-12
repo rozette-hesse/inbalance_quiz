@@ -152,13 +152,22 @@ if st.session_state.page == "intro":
             st.session_state.page = "quiz"
             st.rerun()
 
+
+
 # ── QUIZ ──
 elif st.session_state.page == "quiz":
     st.header("📝 Answer All Questions")
     for qid, text, opts in questions:
-        st.markdown(f"**{text}**")
-        st.session_state.answers[qid] = st.radio("", opts, key=qid)
-        st.markdown("---")
+        # Use a single radio line without index to avoid prefill color
+        st.markdown(f"<b>{text}</b>", unsafe_allow_html=True)
+        st.session_state.answers[qid] = st.radio(
+            label="", 
+            options=opts, 
+            key=qid,
+            label_visibility="collapsed",  # Hides label padding
+            index=None
+        )
+        st.markdown("<hr style='margin: 4px 0;'>", unsafe_allow_html=True)
 
     if st.button("Submit Answers"):
         if any(v is None for v in st.session_state.answers.values()):
