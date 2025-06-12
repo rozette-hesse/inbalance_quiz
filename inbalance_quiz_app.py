@@ -202,6 +202,15 @@ elif st.session_state.page == "results":
     join = st.radio("Would you like to join?", ["Yes", "No"], key="join_choice", index=None)
 
     track = symptoms = goal = notes = ""
+    all_recs = []
+    for qid, sel in st.session_state.answers.items():
+        r = recs_map[qid].get(sel)
+        if r:
+            all_recs.append(r)
+            recommendation_text = " | ".join(all_recs)
+
+
+    
     if join == "Yes":
         track = st.radio("How do you track symptoms?", ["App", "Manual", "Not yet", "Other"], key="track", index=None)
         symptoms = st.multiselect("Which symptoms affect you most?", [
@@ -211,12 +220,7 @@ elif st.session_state.page == "results":
         goal = st.radio("Main health goal?", ["Understand my cycle", "Reduce symptoms", "Get a diagnosis", "Personalized plan", "Other"], key="goal", index=None)
         notes = st.text_area("Any additional info?", key="notes")
 
-all_recs = []
-for qid, sel in st.session_state.answers.items():
-    r = recs_map[qid].get(sel)
-    if r:
-        all_recs.append(r)
-recommendation_text = " | ".join(all_recs)
+
 
 
     if st.button("📧 Save & Finish"):
