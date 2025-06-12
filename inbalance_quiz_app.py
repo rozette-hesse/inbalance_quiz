@@ -60,17 +60,61 @@ questions = [
 ]
 
 # ── DIAGNOSIS ──
-def determine_diagnosis(score):
-    if score < 25:
-        return "No strong hormonal patterns detected"
-    elif score < 35:
-        return "Possible Ovulatory Imbalance"
-    elif score < 45:
-        return "Possible Metabolic-Hormonal Imbalance"
-    elif score < 55:
-        return "H-PCO (Androgenic PCOS)"
+def determine_diagnosis(answers):
+    option_weights = {
+        "Q1": {
+            "Does not apply (e.g., pregnancy or hormonal treatment)": 0,
+            "Regular (25–35 days)": 1,
+            "Often irregular (<25 or >35 days)": 6,
+            "Rarely got period (<6 times/year)": 8
+        },
+        "Q2": {
+            "No": 1,
+            "Yes, manageable": 5,
+            "Yes, resistant to removal": 7,
+            "Yes + scalp thinning/hair loss": 8
+        },
+        "Q3": {
+            "No": 1,
+            "Yes, mild": 4,
+            "Yes, frequent despite treatment": 6,
+            "Yes, severe/persistent": 8
+        },
+        "Q4": {
+            "No, weight is stable": 1,
+            "Stable only with effort": 2,
+            "Struggling to maintain": 5,
+            "Can't lose with diet/exercise": 7
+        },
+        "Q5": {
+            "No": 1,
+            "Sometimes": 2,
+            "Yes, frequently": 4,
+            "Yes, daily with low energy": 6
+        }
+    }
+
+    mc = option_weights["Q1"].get(answers["Q1"], 0)
+    hair = option_weights["Q2"].get(answers["Q2"], 0)
+    acne = option_weights["Q3"].get(answers["Q3"], 0)
+    weight = option_weights["Q4"].get(answers["Q4"], 0)
+    fatigue = option_weights["Q5"].get(answers["Q5"], 0)
+
+    # Cluster scores
+    CA = mc * 4
+    HYPRA = hair * 4 + acne * 3
+    PCOMIR = weight * 2 + fatigue * 1
+
+    if CA >= 20 and HYPRA >= 20 and PCOMIR >= 10:
+        return "HCA-PCO (Chronic Anovulation + HyperAndrogenism + PCOM/IR)"
+    elif CA >= 20 and HYPRA >= 20 and PCOMIR < 10:
+        return "H-CA (Chronic Anovulation + HyperAndrogenism)"
+    elif CA < 20 and HYPRA >= 20 and PCOMIR >= 10:
+        return "H-PCO (HyperAndrogenism + PCOM/IR)"
+    elif CA >= 20 and HYPRA < 20 and PCOMIR >= 10:
+        return "PCO-CA (Anovulation + PCOM/IR)"
     else:
-        return "HCA-PCO (Classic PCOS)"
+        return "No strong hormonal patterns detected"
 
 # ── RECOMMENDATIONS MAP ──
 recs_map = {
@@ -179,7 +223,7 @@ elif st.session_state.page == "quiz":
 
 # ── RESULTS ──
 elif st.session_state.page == "results":
-    diagnosis = determine_diagnosis(st.session_state.total_score)
+    diagnosis = determine_diagnosis(st.session_state.answers)
     st.subheader(f"🧬 Diagnosis: {diagnosis}")
     st.markdown("### 📌 Personalized Recommendations")
 
