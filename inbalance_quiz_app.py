@@ -211,16 +211,13 @@ elif st.session_state.page == "results":
     track = symptoms = goal = notes = ""
     
     if join == "Yes":
-    track = st.radio("How do you track symptoms?", ["App", "Manual", "Not yet", "Other"], key="track", index=None)
-    symptoms = st.multiselect("Which symptoms affect you most?", [
-        "Irregular cycles", "Acne", "Bloating", "Fatigue", "Mood swings", 
-        "Cravings", "Anxiety", "Brain fog", "Sleep issues"
-    ], key="symptoms")
-    goal = st.radio("Main health goal?", [
-        "Understand my cycle", "Reduce symptoms", "Get a diagnosis", 
-        "Personalized plan", "Other"
-    ], key="goal", index=None)
-    notes = st.text_area("Any additional info?", key="notes")
+        track = st.radio("How do you track symptoms?", ["App", "Manual", "Not yet", "Other"], key="track", index=None)
+        symptoms = st.multiselect("Which symptoms affect you most?", [
+        "Irregular cycles", "Acne", "Bloating", "Fatigue", "Mood swings", "Cravings", "Anxiety", "Brain fog", "Sleep issues"], key="symptoms")
+        goal = st.radio("Main health goal?", [ "Understand my cycle", "Reduce symptoms", "Get a diagnosis", 
+        "Personalized plan", "Other"], key="goal", index=None)
+        notes = st.text_area("Any additional info?", key="notes")
+
 
 
 
